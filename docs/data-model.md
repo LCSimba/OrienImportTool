@@ -6,8 +6,8 @@ Conceptual model. Persistence choice deferred (see `decisions.md`). The intent i
 
 ### Equipment
 - `id`, `parent_id` (nullable, self-FK)
-- `machine_type`, `name`, `tag`, `iso14224_node_id`
-- N-level hierarchy; ISO 14224 mapping attached at each node.
+- `machine_type`, `name`, `tag`
+- N-level hierarchy. ISO 14224 equipment-taxonomy mapping (Annex A levels) deferred until taxonomy tables are added; not in the current `data/iso14224/` subset.
 
 ### Function
 - `id`, `equipment_id`, `description`
@@ -17,9 +17,13 @@ Conceptual model. Persistence choice deferred (see `decisions.md`). The intent i
 
 ### FailureMode
 - `id`, `functional_failure_id`, `description`
+- `external_token` (Orien `failureModeToken`)
+- `mechanism_text` — raw "X due to Y" string from Orien `mechanismAndCause`
+- `what_text` — Orien `what`
 - `severity`, `occurrence`, `detection`, `rpn`
 - `criticality_class` (enriched)
-- `iso14224_failure_mode_id` (nullable, with `unmapped` flag if absent)
+- `custom_attributes` (jsonb) — for `Failure Mode.custom.*` Orien fields
+- ISO 14224 mapping is multi-dimensional and lives in `Iso14224Mapping` (a single `FailureMode` typically has three rows: MODE / MECHANISM / CAUSE).
 
 ### FailureCause
 - `id`, `failure_mode_id`, `description`
@@ -38,9 +42,30 @@ Conceptual model. Persistence choice deferred (see `decisions.md`). The intent i
 - `alias_id`, `term_id`, `text`, `kind` (spelling | abbreviation | slang | code)
 - Optional `equipment_scope_id` for context-specific aliases.
 
-### Iso14224Mapping
-- `id`, `source_entity_type`, `source_entity_id`, `iso_node_id`
-- `confidence`, `rationale`, `version`, `proposer` (rule | llm | sme)
+### Iso14224 Reference Tables (immutable seed data)
+Loaded from `data/iso14224/*.csv` on bootstrap. Versioned by table; mappings reference the version they were created against.
+
+- `Iso14224FailureMode` (B15) — `code` (= failure_mode), `description`
+- `Iso14224FailureMechanism` (B2) — `code`, `category`, `description` (category derived per loader policy; see `data/iso14224/SCHEMA.md` open issue #1)
+- `Iso14224FailureCause` (B3) — `sub_code` (PK, e.g. `1.1`), `main_code`, `main_category`, `sub_name`, `description`
+- `Iso14224DetectionMethod` (B4) — `code_number`, `method`, `description`, `examples`
+- `Iso14224MaintenanceActivity` (B5) — `code_number`, `activity`, `description`, `use` (`C` | `P` | `C, P`), `examples`
+
+### Iso14224Mapping (polymorphic)
+- `id`
+- `source_entity_type`, `source_entity_id` — what we are mapping (e.g. `FailureMode`, `Activity`, `DetectionMethod`)
+- `dimension` (enum: `MODE` | `MECHANISM` | `CAUSE` | `DETECTION_METHOD` | `MAINTENANCE_ACTIVITY`) — selects the target ISO table
+- `iso_entity_id` — FK into the table implied by `dimension`
+- `iso_table_version` — which CSV version the mapping was made against
+- `confidence` (0..1), `rationale`, `proposer` (`rule` | `llm` | `sme`)
+- `superseded_by_id` (nullable) — versioning via supersession, never in-place updates
+- Uniqueness: `(source_entity_type, source_entity_id, dimension, iso_entity_id)` for non-superseded rows
+
+Typical row counts per source entity:
+- Orien `FailureMode` → 3 mappings: `MODE` (B15), `MECHANISM` (B2), `CAUSE` (B3)
+- Orien `Activity` (most) → 1 mapping: `MAINTENANCE_ACTIVITY` (B5)
+- Orien `Activity` whose `activityCode` is a CM technique (Vibration Analysis, Thermography, etc.) → 1 mapping: `DETECTION_METHOD` (B4)
+- Orien `DetectionMethod` → 1 mapping: `DETECTION_METHOD` (B4)
 
 ### DowntimeEvent
 - `id`, `asset_id`, `start_ts`, `end_ts`, `duration_s`, `text`
@@ -69,11 +94,17 @@ Conceptual model. Persistence choice deferred (see `decisions.md`). The intent i
 Equipment (tree)
   └─ Function
        └─ FunctionalFailure
-            └─ FailureMode ──► Iso14224Mapping
+            └─ FailureMode ──► Iso14224Mapping (3×: MODE/MECHANISM/CAUSE)
                  ├─ FailureCause
                  ├─ FailureEffect
-                 ├─ DetectionMethod
+                 ├─ DetectionMethod ──► Iso14224Mapping (DETECTION_METHOD)
                  └─ RecommendedAction
+                      └─ Activity ──► Iso14224Mapping (MAINTENANCE_ACTIVITY,
+                                                       optionally DETECTION_METHOD)
+
+Iso14224Mapping ──► one of:
+  Iso14224FailureMode | Iso14224FailureMechanism | Iso14224FailureCause
+  | Iso14224DetectionMethod | Iso14224MaintenanceActivity
 
 Term ──► Alias (n)
   └─ optional scope: Equipment subtree
@@ -87,11 +118,12 @@ DowntimeEvent ──► Classification ──► Annotation
 
 ## Invariants
 
-- Every `FailureMode` either has an explicit `iso14224_failure_mode_id` or carries an `unmapped` flag — no silent gaps.
+- Every `FailureMode` carries either an `Iso14224Mapping` row in each of `MODE`, `MECHANISM`, `CAUSE` dimensions, or an explicit `unmapped` flag per dimension — no silent gaps in any dimension.
+- ISO 14224 reference tables are immutable from the application; updates land via new CSVs and a versioned reload.
+- `Iso14224Mapping` rows are versioned via `superseded_by_id`; corrections never overwrite.
 - Aliases are unique within `(text, language, scope)`.
 - Every `Classification` references a `ModelRun` for reproducibility (NFR-2).
 - `AuditLog` captures all writes; the domain has no "stealth" mutation paths.
-- Mappings are versioned: corrections create a new mapping row, never overwrite.
 
 ## Identity & Versioning
 

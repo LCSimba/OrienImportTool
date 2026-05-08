@@ -27,9 +27,10 @@ These need answers before implementation begins. Each item carries a recommendat
 ## D-6 Multi-tenant — LOCKED
 - **Decision:** single-tenant, single-plant deployment. Aliases plant-scoped. Multi-tenancy reconsidered only if a clear second-plant requirement appears.
 
-## D-7 ISO 14224 Source
-- **Open:** license the standard tables or build a curated subset?
-- **Recommendation:** build a working subset from the public taxonomy levels and the failure-mode list, document deviations explicitly. License full tables only if needed for compliance reporting.
+## D-7 ISO 14224 Source — RESOLVED
+- **Decision:** use the curated CSVs in `data/iso14224/` (B2 mechanisms, B3 causes, B4 detection methods, B5 maintenance activities, B15 failure modes). Schema in `data/iso14224/SCHEMA.md`.
+- **Coverage gap:** Annex A (equipment-taxonomy hierarchy) not in this set. Equipment ISO mapping is deferred until that table is added.
+- **Open issue:** B2 has six `General` rows (one per implicit category) without a category column — needs disambiguation before parsing. See SCHEMA.md.
 
 ## D-8 LLM Provider
 - **Recommendation:** Anthropic Claude. Sonnet for routine review; Opus for ambiguous escalations and FMEA-gap synthesis. Prompt caching on the failure-mode catalogue and ISO 14224 reference.
@@ -61,3 +62,4 @@ These need answers before implementation begins. Each item carries a recommendat
 | 2026-05-08 | D-5 Hourly batch downtime ingest | Simpler ops, sufficient for analytical use | User |
 | 2026-05-08 | D-6 Single-tenant single-plant deployment | No multi-plant requirement on the table | User |
 | 2026-05-08 | D-3 Orien export format documented | Fixture received; `tests/fixtures/orien/SCHEMA.md` is the parser contract | Claude |
+| 2026-05-08 | D-7 ISO 14224 reference set adopted | User-provided B2/B3/B4/B5/B15 CSVs; Annex A deferred | User |
