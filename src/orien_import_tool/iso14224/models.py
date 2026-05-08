@@ -63,6 +63,10 @@ class Iso14224MaintenanceActivity:
     ``use`` carries the corrective/preventative applicability flag from the CSV
     (``"C"``, ``"P"``, or ``"C, P"``). The redundant ``Corrective`` and
     ``Preventative`` columns in the source CSV are intentionally not loaded.
+
+    ``is_extension`` flags rows that are local additions (loaded from
+    ``ISO14224_Table_B5_Extensions.csv``) rather than ISO-standard rows. Use
+    this to filter when emitting ISO-conformant exports.
     """
 
     code_number: int
@@ -70,6 +74,7 @@ class Iso14224MaintenanceActivity:
     description: str
     examples: str
     use: str
+    is_extension: bool = False
 
     @property
     def is_corrective(self) -> bool:

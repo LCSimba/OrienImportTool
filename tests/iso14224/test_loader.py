@@ -125,8 +125,20 @@ def test_load_detection_methods_unknown_examples_blank(iso_dir: Path) -> None:
 
 
 def test_load_maintenance_activities_count(iso_dir: Path) -> None:
+    """12 ISO-standard rows + extensions loaded from B5_Extensions.csv."""
     activities = load_maintenance_activities(iso_dir)
-    assert len(activities) == 12
+    iso_rows = [a for a in activities.values() if not a.is_extension]
+    extension_rows = [a for a in activities.values() if a.is_extension]
+    assert len(iso_rows) == 12
+    assert len(extension_rows) >= 1
+
+
+def test_load_maintenance_activities_statutory_extension(iso_dir: Path) -> None:
+    activities = load_maintenance_activities(iso_dir)
+    statutory = activities[1001]
+    assert statutory.activity == "Statutory"
+    assert statutory.is_extension is True
+    assert statutory.code_number >= 1001
 
 
 def test_load_maintenance_activities_use_values(iso_dir: Path) -> None:
@@ -161,7 +173,8 @@ def test_load_all_returns_complete_set(iso_dir: Path) -> None:
     assert len(refset.failure_mechanisms) == 38
     assert len(refset.failure_causes) == 21
     assert len(refset.detection_methods) == 10
-    assert len(refset.maintenance_activities) == 12
+    iso_rows = [a for a in refset.maintenance_activities.values() if not a.is_extension]
+    assert len(iso_rows) == 12
 
 
 # --- Error handling -------------------------------------------------------------------

@@ -26,7 +26,12 @@ _FILES = {
     "failure_causes": "ISO14224_Table_B3_FailureCauses.csv",
     "detection_methods": "ISO14224_Table_B4_DetectionMethods.csv",
     "maintenance_activities": "ISO14224_Table_B5_MaintenanceActivities.csv",
+    "maintenance_activity_extensions": "ISO14224_Table_B5_Extensions.csv",
 }
+
+# Extension code numbers must be at or above this value to leave room for
+# future ISO 14224 standard rows.
+_EXTENSION_CODE_FLOOR = 1001
 
 
 class IsoLoadError(ValueError):
@@ -146,12 +151,41 @@ def load_detection_methods(
 def load_maintenance_activities(
     iso_dir: Path = DEFAULT_ISO_DIR,
 ) -> dict[int, Iso14224MaintenanceActivity]:
-    path = iso_dir / _FILES["maintenance_activities"]
+    """Load B5 plus any local extensions from ``ISO14224_Table_B5_Extensions.csv``.
+
+    Extension rows are flagged ``is_extension=True`` and must use code numbers
+    at or above ``_EXTENSION_CODE_FLOOR`` (1001) to leave room for future ISO
+    14224 standard rows.
+    """
+
+    items = list(_load_b5_rows(iso_dir / _FILES["maintenance_activities"], is_extension=False))
+
+    extensions_path = iso_dir / _FILES["maintenance_activity_extensions"]
+    if extensions_path.exists():
+        extension_items = list(_load_b5_rows(extensions_path, is_extension=True))
+        for ext in extension_items:
+            if ext.code_number < _EXTENSION_CODE_FLOOR:
+                raise IsoLoadError(
+                    f"{extensions_path.name}: extension code_number {ext.code_number} "
+                    f"is below the {_EXTENSION_CODE_FLOOR} floor reserved for "
+                    f"local additions"
+                )
+        items.extend(extension_items)
+
+    _check_unique(
+        iso_dir / _FILES["maintenance_activities"],
+        lambda a: a.code_number,
+        items,
+        "code_number",
+    )
+    return {a.code_number: a for a in items}
+
+
+def _load_b5_rows(path: Path, *, is_extension: bool):
     rows = _read_rows(path)
     if not rows:
         raise IsoLoadError(f"{path.name}: no data rows")
     _require_columns(path, rows[0], {"code_number", "activity", "description", "examples", "use"})
-    items = []
     for r in rows:
         try:
             code = int(r["code_number"])
@@ -164,17 +198,14 @@ def load_maintenance_activities(
             raise IsoLoadError(
                 f"{path.name}: row {code} has unexpected `use` tokens {sorted(use_tokens)}"
             )
-        items.append(
-            Iso14224MaintenanceActivity(
-                code_number=code,
-                activity=r["activity"],
-                description=r["description"],
-                examples=r["examples"],
-                use=r["use"],
-            )
+        yield Iso14224MaintenanceActivity(
+            code_number=code,
+            activity=r["activity"],
+            description=r["description"],
+            examples=r["examples"],
+            use=r["use"],
+            is_extension=is_extension,
         )
-    _check_unique(path, lambda a: a.code_number, items, "code_number")
-    return {a.code_number: a for a in items}
 
 
 @dataclass(frozen=True, slots=True)

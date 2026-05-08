@@ -73,6 +73,18 @@ Two extra columns flag applicability:
 
 Used for: **what maintenance work was planned or performed**. Every Orien `activityCode` maps here. The B5 description and examples columns carry the synonyms (e.g. B5:4 Adjust includes "calibrate"; B5:5 Refit includes "lube, oil change"; B5:7 Service includes "Cleaning") so the mapping is unambiguous when the activity name itself doesn't match exactly.
 
+### B5 Extensions (`ISO14224_Table_B5_Extensions.csv`)
+
+Local additions to B5 for activity codes that do not fit any of the 12 standard rows. Same schema as B5. The loader merges extensions with the standard table and tags each loaded row with `is_extension=True`. Extension code numbers must be ≥ 1001 to leave room for ISO 14224 to extend the standard in a future revision.
+
+Currently in this file:
+
+| code_number | activity | use | Notes |
+|---|---|---|---|
+| 1001 | Statutory | C, P | Regulatory-mandated activity. The underlying work is typically an Inspection or Test; the extension captures the *driver* dimension while preserving the activity dimension. |
+
+ISO-conformant exports should filter out rows where `is_extension=True`.
+
 ## Natural Mappings — Orien → ISO 14224
 
 The shape of the Orien data lines up cleanly with the ISO tables once we accept that one Orien field can carry multiple ISO codes:
@@ -119,7 +131,7 @@ Every entry resolves cleanly to a B5 row using either the activity name or B5's 
 | Operate | 12 | Other | operating is not maintenance work |
 | Repair | 2 | Repair | direct |
 | Replace | 1 | Replace | direct |
-| Statutory | 8 | Test | B5:8 — regulatory function/performance test |
+| Statutory | 1001 | Statutory (B5 extension) | regulatory mandate — local addition; underlying work is typically Inspection or Test |
 | Test | 8 | Test | direct |
 | Thermography | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 | Ultrasonic Testing | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |

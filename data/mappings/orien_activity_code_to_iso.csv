@@ -11,7 +11,7 @@ Oil Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive i
 Operate,12,Other,"C, P",B5:12 — operating is not maintenance work,rule,medium
 Repair,2,Repair,C,direct,rule,high
 Replace,1,Replace,"C, P",direct,rule,high
-Statutory,8,Test,P,B5:8 — regulatory function/performance test,rule,medium
+Statutory,1001,Statutory,"C, P",B5 extension — regulatory mandate; underlying work is typically Inspection or Test,rule,high
 Test,8,Test,P,direct,rule,high
 Thermography,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
 Ultrasonic Testing,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
