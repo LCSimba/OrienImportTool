@@ -3,16 +3,16 @@ Adjust,4,Adjust,"C, P",direct,rule,high
 Calibrate,4,Adjust,"C, P","B5:4 examples include ""calibrate""",rule,medium
 Check,6,Check,C,direct,rule,high
 Clean,7,Service,P,"B5:7 examples include ""Cleaning""",rule,medium
-Fluid Analysis,8,Test,P,B5:8 — periodic test of performance,rule,medium
+Fluid Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
 Inspection,9,Inspection,P,direct,rule,high
 Lube,5,Refit,"C, P","B5:5 examples include ""lube, oil change""",rule,medium
 Measure,8,Test,P,B5:8 — measurement is a test of a parameter,rule,medium
-Oil Analysis,8,Test,P,B5:8 — analytical test of fluid condition,rule,medium
+Oil Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
 Operate,12,Other,"C, P",B5:12 — operating is not maintenance work,rule,medium
 Repair,2,Repair,C,direct,rule,high
 Replace,1,Replace,"C, P",direct,rule,high
 Statutory,8,Test,P,B5:8 — regulatory function/performance test,rule,medium
 Test,8,Test,P,direct,rule,high
-Thermography,8,Test,P,B5:8 — non-destructive thermal test,rule,medium
-Ultrasonic Testing,8,Test,P,B5:8 — non-destructive ultrasonic test,rule,medium
-Vibration Analysis,8,Test,P,B5:8 — periodic test of dynamic performance,rule,medium
+Thermography,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
+Ultrasonic Testing,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
+Vibration Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium

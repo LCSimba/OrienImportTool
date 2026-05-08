@@ -111,19 +111,19 @@ Every entry resolves cleanly to a B5 row using either the activity name or B5's 
 | Calibrate | 4 | Adjust | B5:4 examples include "calibrate" |
 | Check | 6 | Check | direct |
 | Clean | 7 | Service | B5:7 examples include "Cleaning" |
-| Fluid Analysis | 8 | Test | B5:8 — periodic test of performance |
+| Fluid Analysis | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 | Inspection | 9 | Inspection | direct |
 | Lube | 5 | Refit | B5:5 examples include "lube, oil change" |
 | Measure | 8 | Test | B5:8 — measurement is a test of a parameter |
-| Oil Analysis | 8 | Test | B5:8 — analytical test of fluid condition |
+| Oil Analysis | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 | Operate | 12 | Other | operating is not maintenance work |
 | Repair | 2 | Repair | direct |
 | Replace | 1 | Replace | direct |
 | Statutory | 8 | Test | B5:8 — regulatory function/performance test |
 | Test | 8 | Test | direct |
-| Thermography | 8 | Test | B5:8 — non-destructive thermal test |
-| Ultrasonic Testing | 8 | Test | B5:8 — non-destructive ultrasonic test |
-| Vibration Analysis | 8 | Test | B5:8 — periodic test of dynamic performance |
+| Thermography | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
+| Ultrasonic Testing | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
+| Vibration Analysis | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 
 ## Bootstrap loading
 
