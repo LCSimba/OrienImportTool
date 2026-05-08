@@ -141,7 +141,7 @@ The parser is then written to make this test pass.
 
 ## Fixture statistics (this export)
 
-- 1 location (`4FC025 - CONVEYOR [4F-Belt] - TRUNK`), 8 parent components, 77 child components.
+- 1 location (`4FC025 - CONVEYOR [4F-Belt] - TRUNK`), 77 components forming a 2-level tree (7 top-level + 70 children). Top-level: Conveyor Belt Assembly, Conveyor Drive System, Conveyor Structure, Conveyor Take-Up System, Dust suppresion system, Electrical System, Instrumentation System.
 - 752 data rows; 735 with failure mode; 737 with activity.
 - 21 distinct `mechanismAndCause` values used (of 73 in vocabulary).
 - Strategy mix — Condition Based: 692, Fixed Time: 35, Fault Find Interval: 8.
