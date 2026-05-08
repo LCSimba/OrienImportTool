@@ -58,7 +58,7 @@ Used for: the **root cause** half of failure descriptions (the "Y" in "X due to 
 
 10 methods: Failure-finding test, Condition monitoring, Scheduled inspection, Continuous monitoring, Scheduled maintenance, Demand, Operational observation, Maintenance observation, Other, Unknown.
 
-Used for: the canonical detection-method axis of the FMEA. Some Orien activityCodes (Vibration Analysis, Thermography, Oil/Fluid Analysis, Ultrasonic Testing) actually describe detection techniques and map here, not to B5.
+Used for: **how a discovered failure was detected**. B4 is event metadata on a failure, not a property of a planned activity. Even when an Orien activity is itself a CM technique (Vibration Analysis, Thermography, Oil/Fluid Analysis, Ultrasonic Testing), the activity is still a B5 maintenance activity (B5:8 Test); B4 only enters the picture if that activity actually surfaced a failure and an SME records the detection method on the failure record.
 
 ## B5 — Maintenance Activities
 
@@ -71,7 +71,7 @@ Two extra columns flag applicability:
 - `use` — `C` (corrective only), `P` (preventive only), or `C, P` (both).
 - `Corrective` / `Preventative` — `X` if applicable, blank otherwise. Redundant with `use`; `use` is authoritative.
 
-Used for: the maintenance-activity axis. Most Orien activityCodes map here directly.
+Used for: **what maintenance work was planned or performed**. Every Orien `activityCode` maps here. The B5 description and examples columns carry the synonyms (e.g. B5:4 Adjust includes "calibrate"; B5:5 Refit includes "lube, oil change"; B5:7 Service includes "Cleaning") so the mapping is unambiguous when the activity name itself doesn't match exactly.
 
 ## Natural Mappings — Orien → ISO 14224
 
@@ -82,9 +82,10 @@ The shape of the Orien data lines up cleanly with the ISO tables once we accept 
 | `mechanismAndCause` ("X due to Y") | B15 (X) + B2 (X or Y) + B3 (Y) | Decompose at " due to " into mode/mechanism + cause. |
 | `what` | B15 | When `mechanismAndCause` is blank or generic. |
 | `strategyType` | (no direct ISO equivalent) | Carry as Orien-native attribute. |
-| `activityCode` | B5 mostly; B4 for condition-monitoring techniques | Branch on activity nature. |
+| `activityCode` | B5 (always) | Use B5 description + examples for synonym matching; never B4. |
 | `activityType` (Predictive / Preventative / Corrective / …) | B5.use | Cross-check predicted B5 mapping against Orien's stated activity type. |
 | `criticalYN`, custom criticality | (no direct ISO equivalent) | Stays in canonical model only. |
+| Detection method on a discovered failure (SME-entered, not from Orien export) | B4 | Separate fact; never lives on the activity. |
 
 ### Worked examples (from this fixture's vocabulary)
 
@@ -99,6 +100,30 @@ The shape of the Orien data lines up cleanly with the ISO tables once we accept 
 | Overheats/Melts due to Lack of lubrication | Overheating | Wear (or Overheating) | 2.3 Maintenance error |
 
 These mappings will be SME-confirmed during enrichment, not auto-applied. The mapping store records the proposer (`rule | llm | sme`) and confidence on every row.
+
+### Worked examples — Orien `activityCode` → B5
+
+Every entry resolves cleanly to a B5 row using either the activity name or B5's `description` / `examples` column. No B4 fallback.
+
+| Orien `activityCode` | B5 code | B5 activity | Justification |
+|---|---|---|---|
+| Adjust | 4 | Adjust | direct |
+| Calibrate | 4 | Adjust | B5:4 examples include "calibrate" |
+| Check | 6 | Check | direct |
+| Clean | 7 | Service | B5:7 examples include "Cleaning" |
+| Fluid Analysis | 8 | Test | B5:8 — periodic test of performance |
+| Inspection | 9 | Inspection | direct |
+| Lube | 5 | Refit | B5:5 examples include "lube, oil change" |
+| Measure | 8 | Test | B5:8 — measurement is a test of a parameter |
+| Oil Analysis | 8 | Test | B5:8 — analytical test of fluid condition |
+| Operate | 12 | Other | operating is not maintenance work |
+| Repair | 2 | Repair | direct |
+| Replace | 1 | Replace | direct |
+| Statutory | 8 | Test | B5:8 — regulatory function/performance test |
+| Test | 8 | Test | direct |
+| Thermography | 8 | Test | B5:8 — non-destructive thermal test |
+| Ultrasonic Testing | 8 | Test | B5:8 — non-destructive ultrasonic test |
+| Vibration Analysis | 8 | Test | B5:8 — periodic test of dynamic performance |
 
 ## Bootstrap loading
 

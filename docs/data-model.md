@@ -63,9 +63,8 @@ Loaded from `data/iso14224/*.csv` on bootstrap. Versioned by table; mappings ref
 
 Typical row counts per source entity:
 - Orien `FailureMode` → 3 mappings: `MODE` (B15), `MECHANISM` (B2), `CAUSE` (B3)
-- Orien `Activity` (most) → 1 mapping: `MAINTENANCE_ACTIVITY` (B5)
-- Orien `Activity` whose `activityCode` is a CM technique (Vibration Analysis, Thermography, etc.) → 1 mapping: `DETECTION_METHOD` (B4)
-- Orien `DetectionMethod` → 1 mapping: `DETECTION_METHOD` (B4)
+- Orien `Activity` → 1 mapping: `MAINTENANCE_ACTIVITY` (B5). **Always B5** — even for CM-technique activities (Vibration Analysis, Thermography, Oil/Fluid Analysis, Ultrasonic Testing), which map to B5:8 Test. B4 is reserved for detection metadata on discovered failures, not for activities.
+- `DetectionMethod` (SME-entered fact on a failure record) → 1 mapping: `DETECTION_METHOD` (B4)
 
 ### DowntimeEvent
 - `id`, `asset_id`, `start_ts`, `end_ts`, `duration_s`, `text`
