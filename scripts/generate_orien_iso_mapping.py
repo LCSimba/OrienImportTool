@@ -72,7 +72,9 @@ VERB_TO_B2 = [
     ("cracks", "Breakage"),
     ("fracture", "Breakage"),
     ("breaks", "Breakage"),
+    # Severs covers both material removal (Wear/cut) and rupture (Breakage).
     ("severs", "Wear"),
+    ("severs", "Breakage"),
     ("overheats", "Overheating"),
     ("melts", "Overheating"),
     ("burns", "Overheating"),
@@ -129,12 +131,21 @@ Y_TO_B2 = [
 # last; first-match-wins.
 
 Y_TO_B3: list[tuple[re.Pattern[str], list[str]]] = [
-    # Specific Orien phrases first (more specific than the generic patterns below).
-    (
-        re.compile(r"excessive particle size"),
-        ["2.1", "3.1", "1.1"],
-    ),  # operating > contamination > design
-    (re.compile(r"insufficient fluid velocity|excessive fluid velocity"), ["1.1", "2.1"]),
+    # Mechanism-as-cause Y values that previously had no B3 — now multi-candidate.
+    (re.compile(r"breakdown.*insulation|electrical arcing"), ["1.4", "2.3", "2.1"]),
+    (re.compile(r"\bvibration\b"), ["1.1", "1.5", "2.3"]),
+    # Pure-environment temperature framings stay 3.4 only — match these BEFORE
+    # the general "excessive temperature" pattern below.
+    (re.compile(r"in corrosive environment|exposure to.*temperature"), ["3.4"]),
+    # Generic excessive / high temperature can be env or operating.
+    (re.compile(r"excessive temperature|high temperature|temperature \(hot"), ["3.4", "2.1"]),
+    # Thermal cycling and creep — environment OR design (component wasn't rated
+    # for the service condition).
+    (re.compile(r"thermal stress|creep"), ["3.4", "1.1"]),
+    # Specific Orien phrases (more specific than the generic patterns below).
+    (re.compile(r"excessive particle size"), ["2.1", "3.1", "1.1"]),
+    (re.compile(r"insufficient fluid velocity"), ["1.1", "2.1", "2.3"]),
+    (re.compile(r"excessive fluid velocity"), ["1.1", "2.1"]),
     (re.compile(r"\blow pressure\b"), ["1.1", "2.1", "2.3"]),
     (
         re.compile(r"mechanical overload|thermal overload|electrical overload|overcurrent"),
@@ -142,7 +153,7 @@ Y_TO_B3: list[tuple[re.Pattern[str], list[str]]] = [
     ),
     (re.compile(r"cyclic loading"), ["1.1", "2.1"]),
     (re.compile(r"entrained air"), ["1.1", "2.1"]),
-    (re.compile(r"crevice"), ["1.1"]),
+    (re.compile(r"crevice"), ["1.1", "1.5"]),
     (re.compile(r"dissimilar metals"), ["1.1", "1.5"]),
     (re.compile(r"off.?center|uneven loading"), ["1.5", "2.1"]),
     (re.compile(r"poor electrical connection"), ["1.5", "2.3"]),
