@@ -104,3 +104,14 @@ DowntimeEvent ──► Classification ──► Annotation
 - A relational store (Postgres) fits the tree, FK, and audit needs; JSONB handles flexible Orien payloads and LLM critiques.
 - Vector store (pgvector or external) needed for embedding-based alias search (FR-5.2).
 - Raw imports go to object storage with the row referencing the blob hash (FR-1.3).
+
+## Mapping Notes from the Orien Export
+
+Confirmed against `tests/fixtures/orien/SCHEMA.md` (single-equipment fixture):
+
+- Orien provides stable tokens — `locationToken`, `structureToken`, `failureModeToken`, `activityToken` — these become the natural external keys on `Equipment`, `FailureMode`, `Activity`. Idempotent re-import (FR-1.4) keys on these.
+- Orien's `mechanismAndCause` is a single combined string ("X due to Y") drawn from a curated 73-entry vocabulary. The canonical model represents this as a `FailureMode.mechanism` plus `FailureCause.description`, parsed from the combined string but kept linked back to the original token.
+- Orien uses a `Failure Mode.custom.<Name>` column-naming convention. The canonical `FailureMode` carries a `custom_attributes` JSONB map for these without schema churn.
+- The export is denormalized with up to 5 labour, 5 material, 5 cost line-items per activity. The canonical model normalizes these into per-row child tables (`ActivityLabour`, `ActivityMaterial`, `ActivityCost`).
+- Some columns are present in headers but empty in real exports (`activityCode`, `costDescription*` in this fixture). The parser must tolerate this; the model treats them as optional.
+- `componentLibrary` flag in row 7 of the metadata header may switch the export's semantics — flagged as an open unknown until a `true` fixture arrives.

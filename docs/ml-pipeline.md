@@ -4,6 +4,7 @@
 
 **Inputs**
 - Canonical FMEA: failure-mode strings, function strings, component strings.
+- Orien `r8DropdownValues` controlled vocabularies (especially the ~73-entry `mechanismAndCause` taxonomy and the 17-entry `activityCode` list — see `tests/fixtures/orien/SCHEMA.md`).
 - Alias store: SME-curated synonyms, abbreviations, codes.
 - Optional: historical CMMS work-order text already labeled.
 
@@ -11,7 +12,9 @@
 - Labeled dataset: `(text, equipment_id, failure_mode_id)`.
 - Per-class examples for few-shot prompting.
 
-**Strategy** — every FMEA failure-mode string is a positive example for its label. Aliases multiply examples. Augment with operator-style template variation and back-translation if multilingual. Never let augmentation cross class boundaries.
+**Strategy** — every FMEA failure-mode string is a positive example for its label. The Orien `mechanismAndCause` vocabulary supplies a stable, externally-curated label set we can map directly onto ISO 14224 failure-mode codes. Aliases multiply examples. Augment with operator-style template variation and back-translation if multilingual. Never let augmentation cross class boundaries.
+
+**Found in the wild** — the labour-role list in the dropdown sheet already shows real entry noise ("Electrician.", "ELECTRICAL ELECTRICIAN", "AA- A 20 -Electrician", "b", "dam"). We can mine these as the first batch of alias candidates before downtime data arrives.
 
 ## Pipeline Stages
 

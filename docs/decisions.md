@@ -10,9 +10,11 @@ These need answers before implementation begins. Each item carries a recommendat
 - **Recommendation:** Containerized; cloud-hosted; Anthropic API for the LLM. Per-tenant DB schema.
 - **Open:** offline plant-floor mode? If yes, the classifier must run on-prem and LLM calls become opt-in.
 
-## D-3 Orien Tactics Export Format
-- **Status:** sample export incoming from user.
-- **Action:** once the file lands, capture it as a fixture under `tests/fixtures/orien/`, infer the schema, and write a contract test before any parser code.
+## D-3 Orien Tactics Export Format — DOCUMENTED
+- **Status:** fixture received. Schema captured in `tests/fixtures/orien/SCHEMA.md`.
+- **Format:** `.xlsx` with two sheets — `r8DropdownValues` (controlled vocabularies) and `Single Sheet Tactics` (denormalized FMEA + tactics, 132 columns, rows 1-10 metadata header, row 9 machine-readable column names).
+- **Stable identifiers:** `locationToken`, `structureToken`, `failureModeToken`, `activityToken` — basis for idempotent re-import.
+- **Open follow-ups:** multi-location exports, `componentLibrary=true` exports, language variation, column-order stability across Orien versions — collect more fixtures over time.
 
 ## D-4 Scale Target
 - **Open:** number of plants, equipment units, events / month?
@@ -58,3 +60,4 @@ These need answers before implementation begins. Each item carries a recommendat
 | 2026-05-08 | D-1 Tech stack: Python + Postgres + React | ML-native ecosystem; single engine for relational + JSONB + vector; aligned with workbench UX | User |
 | 2026-05-08 | D-5 Hourly batch downtime ingest | Simpler ops, sufficient for analytical use | User |
 | 2026-05-08 | D-6 Single-tenant single-plant deployment | No multi-plant requirement on the table | User |
+| 2026-05-08 | D-3 Orien export format documented | Fixture received; `tests/fixtures/orien/SCHEMA.md` is the parser contract | Claude |
