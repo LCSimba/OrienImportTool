@@ -18,6 +18,7 @@ a 10-token failure-mode text matching the same token.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from orien_import_tool.classification.preprocessor import tokenise
 from orien_import_tool.classification.seeds import SeedIndex
@@ -27,6 +28,9 @@ from orien_import_tool.domain.downtime import (
     DowntimeEvent,
     FailureModeCandidate,
 )
+
+if TYPE_CHECKING:
+    from orien_import_tool.aliases.store import AliasStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +47,11 @@ class AliasClassifier:
     we ignore the component scope and search all failure modes. The default
     (0.4) was chosen empirically on the conveyor fixture; raise it to be
     stricter, lower it to be more aggressive about scoping.
+
+    ``alias_store`` is optional. When supplied, event tokens are expanded via
+    the alias store before scoring — operator vocabulary like ``tripped``
+    expands to canonical FMEA tokens like ``stoppage``, lifting matches the
+    raw token sets would miss.
     """
 
     def __init__(
@@ -51,15 +60,18 @@ class AliasClassifier:
         *,
         top_k: int = 3,
         component_match_threshold: float = 0.4,
+        alias_store: AliasStore | None = None,
     ) -> None:
         self._index = index
         self._top_k = top_k
         self._component_match_threshold = component_match_threshold
+        self._alias_store = alias_store
 
     def classify(self, event: DowntimeEvent) -> DowntimeClassification:
-        event_tokens = frozenset(tokenise(event.text))
+        raw_tokens: set[str] = set(tokenise(event.text))
         if event.asset_ref:
-            event_tokens = event_tokens | frozenset(tokenise(event.asset_ref))
+            raw_tokens.update(tokenise(event.asset_ref))
+        event_tokens = frozenset(self._expand_with_aliases(raw_tokens))
         if not event_tokens:
             return DowntimeClassification(
                 event_external_id=event.external_id,
@@ -171,3 +183,10 @@ class AliasClassifier:
             if fm_token in fms:
                 return comp_token
         return None
+
+    def _expand_with_aliases(self, tokens: set[str]) -> set[str]:
+        if self._alias_store is None:
+            return tokens
+        expanded = set(tokens)
+        expanded.update(self._alias_store.expand_tokens(tokens))
+        return expanded
