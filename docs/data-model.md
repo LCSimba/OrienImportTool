@@ -46,7 +46,7 @@ Conceptual model. Persistence choice deferred (see `decisions.md`). The intent i
 Loaded from `data/iso14224/*.csv` on bootstrap. Versioned by table; mappings reference the version they were created against.
 
 - `Iso14224FailureMode` (B15) — `code` (= failure_mode), `description`
-- `Iso14224FailureMechanism` (B2) — `code`, `category`, `description` (category derived per loader policy; see `data/iso14224/SCHEMA.md` open issue #1)
+- `Iso14224FailureMechanism` (B2) — `sub_code` (PK, e.g. `1.1`), `main_code`, `main_category`, `sub_name`, `description`
 - `Iso14224FailureCause` (B3) — `sub_code` (PK, e.g. `1.1`), `main_code`, `main_category`, `sub_name`, `description`
 - `Iso14224DetectionMethod` (B4) — `code_number`, `method`, `description`, `examples`
 - `Iso14224MaintenanceActivity` (B5) — `code_number`, `activity`, `description`, `use` (`C` | `P` | `C, P`), `examples`

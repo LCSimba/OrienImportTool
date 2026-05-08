@@ -6,7 +6,7 @@ Curated subset of ISO 14224 Annex B used as canonical reference data for the imp
 
 | File | Annex | Domain | Rows | Primary key |
 |---|---|---|---|---|
-| `ISO14224_Table_B2_FailureMechanisms.csv` | B.2 | How a failure occurred (mechanism level) | 38 | `failure_mechanism` (see note) |
+| `ISO14224_Table_B2_FailureMechanisms.csv` | B.2 | How a failure occurred (mechanism level) | 38 | `sub_code` |
 | `ISO14224_Table_B3_FailureCauses.csv` | B.3 | Root cause of failure | 21 | `sub_code` |
 | `ISO14224_Table_B4_DetectionMethods.csv` | B.4 | How a failure was detected | 10 | `code_number` |
 | `ISO14224_Table_B5_MaintenanceActivities.csv` | B.5 | Maintenance activity taxonomy | 12 | `code_number` |
@@ -22,9 +22,18 @@ Used for: the **observable** half of every failure description ("the X" in "the 
 
 ## B2 — Failure Mechanisms
 
-`failure_mechanism, description`
+`main_code, main_category, sub_code, sub_name, description`
 
-38 mechanisms grouped by implicit category (Mechanical, Material, Instrumentation, Electrical, External, Misc). The CSV does **not** carry the category column, so the value `General` repeats six times — once per group. Open issue: the parser must either (a) be given an updated CSV with a `category` column, or (b) infer category by row ordinal. See **Open issues** below.
+Two-level hierarchy, same shape as B3:
+
+- 1. Mechanical failure — General, Leakage, Vibration, Clearance/alignment failure, Deformation, Looseness, Sticking
+- 2. Material failure — General, Cavitation, Corrosion, Erosion, Wear, Breakage, Fatigue, Overheating, Burst
+- 3. Instrument failure — General, Control failure, No signal/indication/alarm, Faulty signal/indication/alarm, Out of adjustment, Software error, Common cause/Common mode failure
+- 4. Electrical failure — General, Short circuiting, Open circuit, No power/voltage, Faulty power/voltage, Earth/isolation fault
+- 5. External influence — General, Blockage/plugged, Contamination, Miscellaneous external influences
+- 6. Miscellaneous — General, No cause found, Combined causes, Other, Unknown
+
+`sub_code` (e.g. `1.1`, `2.4`, `3.6`) is the unambiguous primary key. The six `General` rows are now disambiguated as `1`, `2`, `3`, `4`, `5`, `6`.
 
 Used for: the **mechanism** half of failure descriptions and as a coarser hint when only one of mode/mechanism is known.
 
@@ -97,7 +106,6 @@ On first start, the importer loads each CSV into its corresponding `Iso14224*` r
 
 ## Open issues
 
-1. **B2 category column missing.** Six rows share the value `General`. The parser must either be given a `category` column or infer category from row ordinal. Recommended: re-emit the CSV with a `category` column (`Mechanical`, `Material`, `Instrumentation`, `Electrical`, `External`, `Misc`) so each row is unambiguous.
-2. **B5 redundant columns.** `Corrective` and `Preventative` duplicate `use`. The loader picks `use` and ignores the others; this is documented to avoid silent drift.
-3. **B4 Unknown row has empty `examples`.** Loader must accept empty cells without choking.
-4. **Smart quotes in B2.** Lines 3 and 4 contain typographic quotes (`“` `”`). The loader must read UTF-8 and treat them as ordinary characters, not collapse them to ASCII.
+1. **B5 redundant columns.** `Corrective` and `Preventative` duplicate `use`. The loader picks `use` and ignores the others; this is documented to avoid silent drift.
+2. **B4 Unknown row has empty `examples`.** Loader must accept empty cells without choking.
+3. **Smart quotes in B2.** Lines 3 and 4 contain typographic quotes (`“` `”`). The loader must read UTF-8 and treat them as ordinary characters, not collapse them to ASCII.
