@@ -1,0 +1,22 @@
+main_code,main_category,sub_code,sub_name,description
+1,Design/manufacturing,1,General,Failure related to design or manufacturing but no further details are known.
+1,Design/manufacturing,1.1,Design error,"Failure due to a design error; e.g. inadequate capacity, wrong material choice."
+1,Design/manufacturing,1.2,Specification error,"Failure due to wrong, incomplete or missing specification requirements."
+1,Design/manufacturing,1.3,Manufacturing defect,"Defects introduced during manufacturing, including assembly faults."
+1,Design/manufacturing,1.4,Material defect,Defective material used in manufacturing.
+1,Design/manufacturing,1.5,Installation error,Failure due to incorrect installation practices.
+2,Operation/maintenance,2,General,Failure related to operation or maintenance but no further details are known.
+2,Operation/maintenance,2.1,Operating error,"Incorrect operation, e.g. wrong sequence, exceeding limits, inadvertent activation."
+2,Operation/maintenance,2.2,Operating in wrong medium,Using incorrect process fluid or medium.
+2,Operation/maintenance,2.3,Maintenance error,"Maintenance performed incorrectly, e.g. wrong procedures, tools or parts."
+2,Operation/maintenance,2.4,Test error,Incorrect execution of a test or check.
+3,External,3,General,Failure caused by some external event but no further details are known.
+3,External,3.1,Contamination,Presence of foreign matter causing malfunction or degradation.
+3,External,3.2,Blockage,Obstruction caused by external factors.
+3,External,3.3,Impact,Physical damage caused by an external object or force.
+3,External,3.4,Environment,"Environmental effects, e.g. temperature extremes, humidity, radiation."
+3,External,3.5,Natural event,"Force majeure, e.g. earthquake, flood, lightning."
+4,Other,4,General,Failure cause not covered by the other categories.
+4,Other,4.1,No cause found,Failure investigated but cause not revealed or too uncertain.
+4,Other,4.2,Combined causes,Several causes: If there is one predominant cause this should be coded.
+4,Other,4.3,Unknown,No information available.

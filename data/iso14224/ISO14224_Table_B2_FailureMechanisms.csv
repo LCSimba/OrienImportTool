@@ -1,0 +1,39 @@
+failure_mechanism,description
+General,A failure related to some mechanical defect but where no further details are known.
+Leakage,"External and internal leakage, either liquids or gases. If the failure mode at equipment unit level is coded as “leakage”, a more causally oriented failure mechanism should be used wherever possible."
+Vibration,"Abnormal vibration. If the failure mode at equipment level is “vibration”, which is a more causally oriented failure mechanism, the failure cause (root cause) should be recorded wherever possible."
+Clearance/alignment failure,Failure caused by faulty clearance or alignment.
+Deformation,"Distortion, bending, buckling, denting, yielding, shrinking, blistering, creeping, etc."
+Looseness,"Disconnection, loose items."
+Sticking,"Sticking, seizure, jamming due to reasons other than deformation or clearance/alignment failures."
+General,A failure related to a material defect but no further details known.
+Cavitation,Relevant for equipment such as pumps and valves.
+Corrosion,"All types of corrosion, both wet (electrochemical) and dry (chemical)."
+Erosion,Erosive wear.
+Wear,"Abrasive and adhesive wear, e.g. scoring, galling, scuffing, fretting."
+Breakage,"Fracture, breach, crack."
+Fatigue,"If the cause of breakage can be traced to fatigue, this code should be used."
+Overheating,Material damage due to overheating/burning.
+Burst,"Item burst, blown, exploded, imploded, etc."
+General,Failure related to instrumentation but no details known.
+Control failure,"No, or faulty, regulation."
+No signal/indication/alarm,No signal/indication/alarm when expected.
+Faulty signal/indication/alarm,"Signal/indication/alarm is wrong in relation to actual process. Can be spurious, intermittent, oscillating, arbitrary."
+Out of adjustment,"Calibration error, parameter drift."
+Software error,"Faulty, or no, control/monitoring/operation due to software error."
+Common cause/Common mode failure,"Several instrument items failed simultaneously, e.g. redundant fire and gas detectors; also failures related to a common cause."
+General,"Failures related to the supply and transmission of electrical power, but where no further details are known."
+Short circuiting,Short circuit.
+Open circuit,"Disconnection, interruption, broken wire/cable."
+No power/voltage,Missing or insufficient electrical power supply.
+Faulty power/voltage,"Faulty electrical power supply, e.g. overvoltage."
+Earth/isolation fault,"Earth fault, low electrical resistance."
+General,Failure caused by some external events or substances outside the boundary but no further details are known.
+Blockage/plugged,"Flow restricted/blocked due to fouling, contamination, icing, flow assurance (hydrates), etc."
+Contamination,"Contaminated fluid/gas/surface, e.g. lubrication oil contaminated, gas-detector head contaminated."
+Miscellaneous external influences,"Foreign objects, impacts, environmental influence from neighbouring systems."
+General,Failure mechanism that does not fall into one of the categories listed above.
+No cause found,Failure investigated but cause not revealed or too uncertain.
+Combined causes,Several causes: If there is one predominant cause this should be coded.
+Other,No code applicable: Use free text.
+Unknown,No information available.

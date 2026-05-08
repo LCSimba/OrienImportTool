@@ -1,0 +1,11 @@
+code_number,method,description,examples
+1,Failure-finding (functional) test,"Failure detected during a planned, periodic functional test or inspection of the item",Fire and gas detection system test; emergency shutdown valve stroke test
+2,Condition monitoring,Failure detected by monitoring of physical parameters to determine item condition,"Vibration analysis, oil analysis, thermography"
+3,Scheduled inspection,"Failure detected during scheduled inspection, visual or instrument-based","External corrosion inspection, thickness measurement"
+4,Continuous monitoring,Failure detected automatically by installed monitoring equipment during operation,Online leak detection; continuous pressure or temperature monitoring
+5,Scheduled maintenance,Failure detected during planned preventive maintenance activity,Finding a worn seal during scheduled pump overhaul
+6,Demand,Failure detected when the item is required to operate,Emergency system fails to start on demand
+7,Operational observation,Failure detected by operational personnel during routine operation,Operator hears abnormal noise or notices abnormal readings
+8,Maintenance observation,Failure detected by maintenance personnel during unrelated maintenance activity,Technician finds damage while working on another component
+9,Other,Failure detected by methods other than those specified above,Any detection method not otherwise classified
+10,Unknown,Detection method is not known,

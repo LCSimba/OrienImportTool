@@ -1,0 +1,13 @@
+code_number,activity,description,examples,use,Corrective,Preventative
+1,Replace,Replacement of the item by a new or refurbished item of the same type and make,Replacement of a worn-out bearing,"C, P",X,X
+2,Repair,Manual maintenance action performed to restore an item to its original appearance or state,"Repack, weld, plug, reconnect, remake, etc.",C,X,
+3,Modify,"Replace, renew or change the item, or a part of it, with an item/part of a different type, make, material or design",Install a filter with smaller mesh diameter; replace a lubrication oil pump with another type; reconfiguration,"C, P",X,X
+4,Adjust,Bringing any out-of-tolerance condition into tolerance,"Align, set and reset, calibrate, balance","C, P",X,X
+5,Refit,"Minor repair/servicing activity to bring back an item to an acceptable appearance, internal and external","Polish, clean, grind, paint, coat, lube, oil change","C, P",X,X
+6,Check,"Cause of the failure is investigated, but no maintenance action performed, or action is deferred. Able to regain function by simple actions.","Restart, resetting, no maintenance action; particularly relevant for functional failures (e.g., fire & gas detectors, subsea equipment)",C,X,
+7,Service,Periodic service tasks; normally no dismantling of the item,"Cleaning, replenishment of consumables, adjustments and calibrations",P,,X
+8,Test,Periodic test of function or performance,Function test of gas detector; accuracy test of flow meter,P,,X
+9,Inspection,"Periodic inspection/check: a careful scrutiny of an item carried out with or without dismantling, normally by use of senses",All types of general check; includes minor servicing as part of the inspection task,P,,X
+10,Overhaul,Major overhaul with extensive disassembly and replacement of items as specified or required,Comprehensive inspection/overhaul,"C, P",X,X
+11,Combination,"Several of the above activities are included; if one activity dominates, this may alternatively be recorded",,"C, P",X,X
+12,Other,Maintenance activity other than specified above,Protection activities,"C, P",X,X

@@ -1,0 +1,30 @@
+failure_mode,description
+Leak,Loss of containment from a component or system (internal or external).
+No output,Required output is absent.
+Output low,Output below required specification.
+Output high,Output above required specification.
+Erratic output,"Output is unstable, intermittent, oscillating or fluctuating."
+Seized/jammed/stuck,Component does not move as intended due to seizure/jamming.
+Blocked/plugged/restricted,Flow or movement impeded by obstruction or fouling.
+Cracked/fractured/broken,Presence of crack or breakage in a component.
+Deformed,"Permanent shape change such as bending, buckling or yielding."
+Worn,"Material removal/deterioration causing loss of function (e.g., wear, scoring, fretting)."
+Corroded,Material degradation due to corrosion.
+Eroded,Material removal due to erosion.
+Overheating,Excess temperature causing malfunction or damage.
+Electrical short,Unintended conductive path resulting in short circuit.
+Open circuit,Break in electrical continuity.
+Ground/isolation fault,Undesired connection to ground or loss of electrical isolation.
+No signal/indication/alarm,Expected signal/indication/alarm not received.
+Faulty signal/indication/alarm,Signal/indication/alarm is wrong relative to actual condition.
+Out of adjustment/calibration drift,Parameter has drifted out of tolerance.
+Spurious trip/shutdown,Unintended trip or shutdown due to fault or error.
+Software error,Faulty or no function due to software issue.
+Physical damage,Observable external damage such as dent or broken enclosure.
+Contaminated,Foreign matter present in or on the item.
+Loose/disconnected,Loss of mechanical or electrical connection.
+Vibration (abnormal),Abnormal vibration exceeding acceptable limits.
+Cavitation,Damage or malfunction due to vapor bubble formation/collapse.
+Burst/ruptured,Catastrophic loss of containment due to burst or rupture.
+Miscellaneous,Failure mode not otherwise classified.
+Unknown,Failure mode cannot be determined.
