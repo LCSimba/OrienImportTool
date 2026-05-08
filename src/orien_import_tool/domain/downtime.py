@@ -14,12 +14,17 @@ class DowntimeEvent:
     historian). ``asset_ref`` is the operator's free-text reference to a
     machine — typically a tag like ``4FC025`` or a description; the
     classifier resolves it to a canonical Component when possible.
+
+    ``start_ts`` is optional — many CMMS exports carry only descriptive
+    rows without timestamps, especially aggregated category tables. The
+    classifier doesn't use timestamps for matching, so an undated record
+    is still useful.
     """
 
     external_id: str
     asset_ref: str
-    start_ts: datetime
     text: str
+    start_ts: datetime | None = None
     end_ts: datetime | None = None
     duration_s: float | None = None
     source_system: str = ""
