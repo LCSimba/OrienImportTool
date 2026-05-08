@@ -6,7 +6,7 @@ Clean,7,Service,P,"B5:7 examples include ""Cleaning""",rule,medium
 Fluid Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
 Inspection,9,Inspection,P,direct,rule,high
 Lube,5,Refit,"C, P","B5:5 examples include ""lube, oil change""",rule,medium
-Measure,8,Test,P,B5:8 — measurement is a test of a parameter,rule,medium
+Measure,9,Inspection,P,B5:9 — measurement is a condition assessment (thickness / clearance / runout),rule,medium
 Oil Analysis,9,Inspection,P,B5:9 — condition monitoring is a non-destructive inspection technique,rule,medium
 Operate,12,Other,"C, P",B5:12 — operating is not maintenance work,rule,medium
 Repair,2,Repair,C,direct,rule,high

@@ -114,7 +114,7 @@ Every entry resolves cleanly to a B5 row using either the activity name or B5's 
 | Fluid Analysis | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 | Inspection | 9 | Inspection | direct |
 | Lube | 5 | Refit | B5:5 examples include "lube, oil change" |
-| Measure | 8 | Test | B5:8 — measurement is a test of a parameter |
+| Measure | 9 | Inspection | B5:9 — measurement is a condition assessment (thickness / clearance / runout) |
 | Oil Analysis | 9 | Inspection | B5:9 — condition monitoring is a non-destructive inspection technique |
 | Operate | 12 | Other | operating is not maintenance work |
 | Repair | 2 | Repair | direct |
