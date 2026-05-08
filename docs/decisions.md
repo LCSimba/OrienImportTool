@@ -2,29 +2,28 @@
 
 These need answers before implementation begins. Each item carries a recommendation that becomes the default unless overridden.
 
-## D-1 Tech Stack
-- **Recommendation:** Python (FastAPI), Postgres + pgvector, S3-compatible object storage. ML in PyTorch / HuggingFace. UI in TypeScript / React.
+## D-1 Tech Stack — LOCKED
+- **Decision:** Python (FastAPI), Postgres + pgvector, S3-compatible object storage. ML in PyTorch / HuggingFace. UI in TypeScript / React.
 - **Rationale:** ML / LLM ecosystem is Python-native; Postgres handles relational + JSONB + vector needs in one engine; React aligns with the workbench and queue UX.
-- **Alternatives:** .NET if existing plant systems are Microsoft-stack; Streamlit for a faster MVP UI at the cost of polish.
 
 ## D-2 Deployment
 - **Recommendation:** Containerized; cloud-hosted; Anthropic API for the LLM. Per-tenant DB schema.
 - **Open:** offline plant-floor mode? If yes, the classifier must run on-prem and LLM calls become opt-in.
 
 ## D-3 Orien Tactics Export Format
-- **Open:** what does Orien actually produce? CSV, XML, Excel, proprietary archive? A sample export will harden the importer (FR-1).
-- **Action:** request a fixture export and a schema description before parser work starts.
+- **Status:** sample export incoming from user.
+- **Action:** once the file lands, capture it as a fixture under `tests/fixtures/orien/`, infer the schema, and write a contract test before any parser code.
 
 ## D-4 Scale Target
 - **Open:** number of plants, equipment units, events / month?
 - **Default sizing:** 1 plant, ~50 equipment units, 100k events / month — fits a single Postgres instance and a small GPU.
 
-## D-5 Real-time vs Batch Downtime
-- **Recommendation:** batch first (hourly), stream later if latency demands it.
+## D-5 Real-time vs Batch Downtime — LOCKED
+- **Decision:** hourly batch ingestion. Streaming deferred until a concrete latency requirement appears.
 - **Rationale:** batch keeps ops simple and is enough for analytical use; streaming adds infra and observability cost without obvious early payoff.
 
-## D-6 Multi-tenant
-- **Recommendation:** single-tenant deployment per plant; plant-scoped aliases. Multi-tenant only if a clear customer pattern emerges.
+## D-6 Multi-tenant — LOCKED
+- **Decision:** single-tenant, single-plant deployment. Aliases plant-scoped. Multi-tenancy reconsidered only if a clear second-plant requirement appears.
 
 ## D-7 ISO 14224 Source
 - **Open:** license the standard tables or build a curated subset?
@@ -56,4 +55,6 @@ These need answers before implementation begins. Each item carries a recommendat
 
 | Date | Decision | Rationale | Owner |
 |---|---|---|---|
-| _pending_ | _to be filled as decisions land_ | | |
+| 2026-05-08 | D-1 Tech stack: Python + Postgres + React | ML-native ecosystem; single engine for relational + JSONB + vector; aligned with workbench UX | User |
+| 2026-05-08 | D-5 Hourly batch downtime ingest | Simpler ops, sufficient for analytical use | User |
+| 2026-05-08 | D-6 Single-tenant single-plant deployment | No multi-plant requirement on the table | User |
