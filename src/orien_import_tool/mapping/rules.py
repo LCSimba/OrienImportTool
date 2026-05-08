@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Rule tables for mapping Orien Tactics vocabulary to ISO 14224 codes.
 
 These were grown empirically against the conveyor fixture's 73-entry

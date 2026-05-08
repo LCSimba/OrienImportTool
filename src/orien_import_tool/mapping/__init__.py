@@ -1,5 +1,12 @@
 """Orien -> ISO 14224 mapping engine."""
 
+from orien_import_tool.mapping.llm_proposer import (
+    B2Suggestion,
+    B3Suggestion,
+    B15Suggestion,
+    FailureModeProposal,
+    LLMProposer,
+)
 from orien_import_tool.mapping.models import (
     Iso14224Mapping,
     MappingDimension,
@@ -9,7 +16,12 @@ from orien_import_tool.mapping.models import (
 from orien_import_tool.mapping.proposer import RuleProposer, propose_mappings
 
 __all__ = [
+    "B2Suggestion",
+    "B3Suggestion",
+    "B15Suggestion",
+    "FailureModeProposal",
     "Iso14224Mapping",
+    "LLMProposer",
     "MappingDimension",
     "MappingResult",
     "Proposer",
