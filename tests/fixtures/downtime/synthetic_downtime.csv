@@ -1,0 +1,8 @@
+event_id,asset,start_time,end_time,duration_seconds,description,source
+e-001,4FC025,2026-04-01T08:30:00,2026-04-01T09:15:00,2700,Belt motor stopped suddenly mid-shift; electrician called to check breaker,cmms-export
+e-002,4FC025,2026-04-02T14:15:00,2026-04-02T15:00:00,2700,Pulley head bearings making grinding noise; lubrication suspected,cmms-export
+e-003,4FC025,2026-04-03T22:10:00,2026-04-03T23:45:00,5700,Lock out facility broken on electrical panel; replacement done,cmms-export
+e-004,4FC025,2026-04-04T06:00:00,2026-04-04T06:25:00,1500,Conveyor structure vibration warning during start-up,cmms-export
+e-005,4FC025,2026-04-05T11:20:00,2026-04-05T11:42:00,1320,Belt assembly tension off; took up by operator,cmms-export
+e-006,4FC025,2026-04-06T18:00:00,2026-04-06T18:30:00,1800,asdgkj nonsense text with no relation,cmms-export
+e-007,UNKNOWN,2026-04-07T03:30:00,2026-04-07T03:45:00,900,Vibration sensor triggered alarm at drive system,cmms-export

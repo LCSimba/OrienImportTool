@@ -1,0 +1,74 @@
+"""Domain model for downtime events and their classifications."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+
+
+@dataclass(frozen=True, slots=True)
+class DowntimeEvent:
+    """One operator-entered downtime record.
+
+    ``external_id`` is the natural key from the source system (CMMS,
+    historian). ``asset_ref`` is the operator's free-text reference to a
+    machine — typically a tag like ``4FC025`` or a description; the
+    classifier resolves it to a canonical Component when possible.
+    """
+
+    external_id: str
+    asset_ref: str
+    start_ts: datetime
+    text: str
+    end_ts: datetime | None = None
+    duration_s: float | None = None
+    source_system: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ComponentMatch:
+    """A scored Component candidate for a downtime event."""
+
+    component_token: str
+    component_description: str
+    score: float
+    matched_terms: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class FailureModeCandidate:
+    """A scored FailureMode candidate for a downtime event."""
+
+    failure_mode_token: str
+    component_token: str
+    score: float
+    matched_terms: tuple[str, ...]
+    rationale: str = ""
+
+
+@dataclass
+class DowntimeClassification:
+    """Classifier output for one :class:`DowntimeEvent`.
+
+    ``component_match`` is the best Component candidate (or ``None`` if no
+    match). ``failure_mode_candidates`` is ordered most-likely first and may
+    be empty. ``proposer`` distinguishes rule-based vs LLM-assisted output.
+    """
+
+    event_external_id: str
+    component_match: ComponentMatch | None
+    failure_mode_candidates: list[FailureModeCandidate] = field(default_factory=list)
+    proposer: str = "alias-rule"
+    notes: str = ""
+
+    @property
+    def best_failure_mode(self) -> FailureModeCandidate | None:
+        return self.failure_mode_candidates[0] if self.failure_mode_candidates else None
+
+    @property
+    def needs_review(self) -> bool:
+        """A classification needs review when the top candidate is weak or there is none."""
+        if not self.failure_mode_candidates:
+            return True
+        top = self.failure_mode_candidates[0]
+        return top.score < 0.5
