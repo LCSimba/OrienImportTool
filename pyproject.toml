@@ -12,11 +12,15 @@ llm = [
     "anthropic>=0.92.0",
     "pydantic>=2.0",
 ]
+postgres = [
+    "sqlalchemy>=2.0",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",
     "anthropic>=0.92.0",
     "pydantic>=2.0",
+    "sqlalchemy>=2.0",
 ]
 
 [build-system]
