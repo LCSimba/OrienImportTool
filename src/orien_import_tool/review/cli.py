@@ -57,6 +57,21 @@ def main(argv: list[str] | None = None) -> int:
     apply.add_argument("--downtime", type=Path)
     apply.add_argument("--downtime-sheet", default="Conveyor")
     apply.add_argument("--decisions-csv", type=Path, required=True)
+    apply.add_argument(
+        "--db-url",
+        default="",
+        help=(
+            "Optional SQLAlchemy URL (e.g. 'sqlite:///review.db' or "
+            "'postgresql+psycopg://user:pass@host/db'). When set, "
+            "alias/mapping/classification decisions and the audit log "
+            "persist to the database."
+        ),
+    )
+    apply.add_argument(
+        "--sme-user",
+        default="",
+        help="Reviewer name to record on audit-log entries.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -84,14 +99,43 @@ def _export(args) -> int:
 def _apply(args) -> int:
     queue = _build_queue(args)
     decisions = decisions_from_csv(args.decisions_csv.read_text(encoding="utf-8"))
-    alias_store = build_initial_alias_store()
-    result = apply_decisions(decisions, queue, alias_store=alias_store)
+
+    if args.db_url:
+        from orien_import_tool.persistence import (
+            AliasRepository,
+            AuditLogRepository,
+            DowntimeRepository,
+            MappingRepository,
+            init_db,
+            make_engine,
+            make_session_factory,
+        )
+
+        engine = make_engine(args.db_url)
+        init_db(engine)
+        factory = make_session_factory(engine)
+        with factory() as session:
+            result = apply_decisions(
+                decisions,
+                queue,
+                alias_repository=AliasRepository(session),
+                mapping_repository=MappingRepository(session),
+                downtime_repository=DowntimeRepository(session),
+                audit_log_repository=AuditLogRepository(session),
+                sme_user=args.sme_user,
+            )
+            session.commit()
+    else:
+        alias_store = build_initial_alias_store()
+        result = apply_decisions(decisions, queue, alias_store=alias_store, sme_user=args.sme_user)
+
     print(
         f"Applied {len(decisions)} decisions: "
         f"+{result.aliases_added} aliases, "
         f"-{result.aliases_rejected} rejected, "
-        f"{result.mapping_decisions_recorded} mapping notes, "
-        f"{result.classification_decisions_recorded} classification notes, "
+        f"{result.mappings_recorded} mappings, "
+        f"{result.classifications_recorded} classifications, "
+        f"{result.audit_entries} audit entries, "
         f"{len(result.skipped)} skipped",
         file=sys.stderr,
     )

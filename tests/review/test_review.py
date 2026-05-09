@@ -347,14 +347,16 @@ def test_apply_decisions_skips_unknown_item_ids() -> None:
     assert result.skipped == ["nonexistent"]
 
 
-def test_apply_decisions_records_mapping_count(small_equipment, iso_dir) -> None:
+def test_apply_decisions_skips_mapping_without_repository(small_equipment, iso_dir) -> None:
+    """Without a mapping_repository, write-style mapping decisions are quarantined."""
     ref = load_all(iso_dir)
     queue = build_mapping_review(propose_mappings(small_equipment, ref))
     if not queue.items:
         pytest.skip("no multi-candidate mappings to review for this fixture")
     decision = ReviewDecision(item_id=queue.items[0].item_id, verdict=ReviewVerdict.ACCEPTED)
     result = apply_decisions([decision], queue)
-    assert result.mapping_decisions_recorded == 1
+    assert result.mappings_recorded == 0
+    assert queue.items[0].item_id in result.skipped
 
 
 # --- End-to-end -------------------------------------------------------------------
