@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from orien_import_tool.iso14224 import Iso14224ReferenceSet
+from orien_import_tool.llm.protocols import ProposerClient
 from orien_import_tool.mapping.models import (
     Iso14224Mapping,
     MappingDimension,
@@ -34,8 +35,6 @@ from orien_import_tool.mapping.models import (
 )
 
 if TYPE_CHECKING:
-    import anthropic
-
     from orien_import_tool.domain.fmea import FailureMode
 
 
@@ -88,7 +87,7 @@ class LLMProposer:
     def __init__(
         self,
         ref: Iso14224ReferenceSet,
-        client: anthropic.Anthropic | None = None,
+        client: ProposerClient | None = None,
         *,
         model: str = DEFAULT_MODEL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
