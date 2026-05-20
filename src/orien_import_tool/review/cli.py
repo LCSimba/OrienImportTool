@@ -105,6 +105,22 @@ def main(argv: list[str] | None = None) -> int:
         default=200,
         help="Cap on events sent to the LLM in one run.",
     )
+    mine.add_argument(
+        "--batch-size",
+        type=int,
+        default=25,
+        help=(
+            "Events per LLM call. Smaller batches = shorter prompts and "
+            "shorter generations per call (each call stays well under "
+            "the timeout); larger batches = fewer calls. Default 25."
+        ),
+    )
+    mine.add_argument(
+        "--max-tokens",
+        type=int,
+        default=4096,
+        help="Per-call generation cap. The model only uses what it needs.",
+    )
     _add_llm_args(mine)
 
     args = parser.parse_args(argv)
@@ -141,6 +157,17 @@ def _add_llm_args(parser: argparse.ArgumentParser) -> None:
         default="sk-local",
         help="API key; most local runtimes ignore this.",
     )
+    parser.add_argument(
+        "--llm-timeout",
+        type=float,
+        default=600.0,
+        help=(
+            "Per-request timeout in seconds. Cold-start a 27B+ model and "
+            "the first call can be very slow (model load + 4k-token gen); "
+            "default 600 covers that. Drop to 60 once the server is warm "
+            "if you want fast-fail."
+        ),
+    )
 
 
 def _make_llm_client(args) -> ProposerClient:
@@ -153,6 +180,7 @@ def _make_llm_client(args) -> ProposerClient:
         base_url=args.llm_url,
         api_key=args.llm_api_key,
         model_name=args.llm_model,
+        timeout=args.llm_timeout,
     )
 
 
@@ -243,7 +271,14 @@ def _mine_aliases(args) -> int:
     )
 
     client = _make_llm_client(args)
-    miner = LLMAliasMiner(iso_ref, equipment=equipment, client=client, model=args.llm_model)
+    miner = LLMAliasMiner(
+        iso_ref,
+        equipment=equipment,
+        client=client,
+        model=args.llm_model,
+        max_tokens=args.max_tokens,
+        batch_size=args.batch_size,
+    )
     proposed = miner.mine(low_conf)
     print(f"Got {len(proposed)} alias proposals back.", file=sys.stderr)
 

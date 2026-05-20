@@ -84,7 +84,7 @@ class OpenAIProposerClient:
         *,
         base_url: str,
         api_key: str = "sk-local",
-        timeout: float = 120.0,
+        timeout: float = 600.0,
         max_retries: int = 2,
         client: openai.OpenAI | None = None,
         model_name: str | None = None,
