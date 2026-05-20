@@ -118,8 +118,13 @@ def main(argv: list[str] | None = None) -> int:
     mine.add_argument(
         "--max-tokens",
         type=int,
-        default=4096,
-        help="Per-call generation cap. The model only uses what it needs.",
+        default=16384,
+        help=(
+            "Per-call generation cap. Thinking models (DeepSeek-R1, QwQ, "
+            "Qwen3-*) burn roughly half their token budget on chain-of-"
+            "thought before producing JSON, so a generous default keeps "
+            "the answer from being cut off."
+        ),
     )
     _add_llm_args(mine)
 

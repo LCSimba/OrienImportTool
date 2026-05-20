@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 
 DEFAULT_MODEL = "claude-opus-4-7"
-DEFAULT_MAX_TOKENS = 4096
+DEFAULT_MAX_TOKENS = 16384  # thinking models (DeepSeek-R1, QwQ, Qwen3-*) burn ~50% on CoT
 
 
 # --- Pydantic response schema -------------------------------------------------------
