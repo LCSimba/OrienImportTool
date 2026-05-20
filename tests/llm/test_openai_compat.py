@@ -126,6 +126,38 @@ def test_response_format_is_pydantic_class() -> None:
     assert fake.captured["response_format"] is _Tiny
 
 
+def test_extra_body_flows_through() -> None:
+    """vLLM-specific extras (chat_template_kwargs, etc.) ride on extra_body."""
+    fake = FakeOpenAIClient(response_payload=_Tiny(name="a", score=0.0))
+    adapter = OpenAIProposerClient(
+        base_url="http://x/v1",
+        client=fake,
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+    )
+    adapter.messages.parse(
+        model="m",
+        max_tokens=10,
+        system="",
+        messages=[{"role": "user", "content": "x"}],
+        output_format=_Tiny,
+    )
+    assert fake.captured["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}}
+
+
+def test_no_extra_body_when_none_supplied() -> None:
+    """Don't send extra_body=None — let the SDK use its default."""
+    fake = FakeOpenAIClient(response_payload=_Tiny(name="a", score=0.0))
+    adapter = OpenAIProposerClient(base_url="http://x/v1", client=fake)
+    adapter.messages.parse(
+        model="m",
+        max_tokens=10,
+        system="",
+        messages=[{"role": "user", "content": "x"}],
+        output_format=_Tiny,
+    )
+    assert "extra_body" not in fake.captured
+
+
 def test_empty_system_omits_system_message() -> None:
     fake = FakeOpenAIClient(response_payload=_Tiny(name="a", score=0.0))
     adapter = OpenAIProposerClient(base_url="http://x/v1", client=fake)

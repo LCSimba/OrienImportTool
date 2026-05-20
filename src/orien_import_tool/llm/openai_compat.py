@@ -88,8 +88,15 @@ class OpenAIProposerClient:
         max_retries: int = 2,
         client: openai.OpenAI | None = None,
         model_name: str | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> None:
+        """``extra_body`` is sent on every request as the OpenAI SDK's
+        ``extra_body`` kwarg — useful for vendor-specific knobs the SDK doesn't
+        model natively (vLLM's ``chat_template_kwargs``, custom routing
+        headers, etc.). For thinking models like Qwen3-* you typically want
+        ``extra_body={"chat_template_kwargs": {"enable_thinking": False}}``."""
         self.model_name = model_name
+        self._extra_body = dict(extra_body) if extra_body else {}
         self._client = (
             client
             if client is not None
@@ -119,12 +126,15 @@ class OpenAIProposerClient:
             openai_messages.append({"role": "system", "content": system_text})
         openai_messages.extend(messages)
 
-        completion = self._client.chat.completions.parse(
-            model=model,
-            max_tokens=max_tokens,
-            messages=openai_messages,
-            response_format=output_format,
-        )
+        parse_kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": openai_messages,
+            "response_format": output_format,
+        }
+        if self._extra_body:
+            parse_kwargs["extra_body"] = self._extra_body
+        completion = self._client.chat.completions.parse(**parse_kwargs)
         parsed = completion.choices[0].message.parsed
         if parsed is None:
             raise ValueError(

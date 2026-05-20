@@ -173,6 +173,17 @@ def _add_llm_args(parser: argparse.ArgumentParser) -> None:
             "if you want fast-fail."
         ),
     )
+    parser.add_argument(
+        "--no-thinking",
+        action="store_true",
+        help=(
+            "For thinking models served via vLLM (Qwen3-*, QwQ), send "
+            "chat_template_kwargs={'enable_thinking': False} to skip the "
+            "chain-of-thought phase. Alias mining and ISO mapping are "
+            "retrieval/classification tasks where deliberation buys "
+            "little — disabling thinking typically halves per-call latency."
+        ),
+    )
 
 
 def _make_llm_client(args) -> ProposerClient:
@@ -181,11 +192,16 @@ def _make_llm_client(args) -> ProposerClient:
         raise SystemExit("--llm-url and --llm-model are required for this subcommand")
     from orien_import_tool.llm import OpenAIProposerClient
 
+    extra_body: dict = {}
+    if getattr(args, "no_thinking", False):
+        extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+
     return OpenAIProposerClient(
         base_url=args.llm_url,
         api_key=args.llm_api_key,
         model_name=args.llm_model,
         timeout=args.llm_timeout,
+        extra_body=extra_body or None,
     )
 
 
