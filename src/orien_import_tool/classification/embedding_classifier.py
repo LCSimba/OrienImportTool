@@ -35,6 +35,8 @@ from orien_import_tool.domain.fmea import Component, Equipment, FailureMode
 if TYPE_CHECKING:  # pragma: no cover
     from numpy.typing import NDArray
 
+    from orien_import_tool.textnorm.normalizer import TextNormalizer
+
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_TOP_K = 3
 DEFAULT_COMPONENT_THRESHOLD = 0.55
@@ -81,10 +83,12 @@ class EmbeddingClassifier:
         model_name: str = DEFAULT_MODEL_NAME,
         top_k: int = DEFAULT_TOP_K,
         component_match_threshold: float = DEFAULT_COMPONENT_THRESHOLD,
+        normalizer: TextNormalizer | None = None,
     ) -> None:
         self._equipment = equipment
         self._top_k = top_k
         self._component_match_threshold = component_match_threshold
+        self._normalizer = normalizer
         self._encoder = encoder if encoder is not None else _load_sentence_transformer(model_name)
 
         self._fm_entries = _collect_failure_modes(equipment)
@@ -95,7 +99,7 @@ class EmbeddingClassifier:
         self._comp_matrix = self._embed([e.text for e in self._comp_entries])
 
     def classify(self, event: DowntimeEvent) -> DowntimeClassification:
-        event_text = _compose_event_text(event)
+        event_text = _compose_event_text(event, self._normalizer)
         if not event_text:
             return DowntimeClassification(
                 event_external_id=event.external_id,
@@ -253,11 +257,14 @@ def _compose_component_text(component: Component) -> str:
     return " | ".join(p for p in parts if p)
 
 
-def _compose_event_text(event: DowntimeEvent) -> str:
-    parts = [event.text]
+def _compose_event_text(event: DowntimeEvent, normalizer: TextNormalizer | None = None) -> str:
+    text = event.text
+    if normalizer is not None and text:
+        text = normalizer.normalize(text).cleaned_text
+    parts = [text]
     if event.asset_ref:
         parts.append(event.asset_ref)
-    joined = " | ".join(parts)
+    joined = " | ".join(p for p in parts if p)
     return normalise(joined) if joined else ""
 
 

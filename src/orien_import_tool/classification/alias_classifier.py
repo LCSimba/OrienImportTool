@@ -31,6 +31,7 @@ from orien_import_tool.domain.downtime import (
 
 if TYPE_CHECKING:
     from orien_import_tool.aliases.store import AliasStore
+    from orien_import_tool.textnorm.normalizer import TextNormalizer
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,11 @@ class AliasClassifier:
     the alias store before scoring — operator vocabulary like ``tripped``
     expands to canonical FMEA tokens like ``stoppage``, lifting matches the
     raw token sets would miss.
+
+    ``normalizer`` is optional. When supplied, event text is cleaned (typos
+    fixed, abbreviations expanded) before tokenising — so ``beraing`` and
+    ``c/v`` match as ``bearing`` and ``conveyor``. Pipeline order is
+    normalize -> alias-expand -> score.
     """
 
     def __init__(
@@ -61,14 +67,19 @@ class AliasClassifier:
         top_k: int = 3,
         component_match_threshold: float = 0.4,
         alias_store: AliasStore | None = None,
+        normalizer: TextNormalizer | None = None,
     ) -> None:
         self._index = index
         self._top_k = top_k
         self._component_match_threshold = component_match_threshold
         self._alias_store = alias_store
+        self._normalizer = normalizer
 
     def classify(self, event: DowntimeEvent) -> DowntimeClassification:
-        raw_tokens: set[str] = set(tokenise(event.text))
+        text = event.text
+        if self._normalizer is not None:
+            text = self._normalizer.normalize(text).cleaned_text
+        raw_tokens: set[str] = set(tokenise(text))
         if event.asset_ref:
             raw_tokens.update(tokenise(event.asset_ref))
         event_tokens = frozenset(self._expand_with_aliases(raw_tokens))

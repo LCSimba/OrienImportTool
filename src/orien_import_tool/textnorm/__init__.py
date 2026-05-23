@@ -26,6 +26,7 @@ from orien_import_tool.textnorm.normalizer import (
     NormalizationResult,
     TextNormalizer,
 )
+from orien_import_tool.textnorm.pipeline import normalize_event, normalize_events
 from orien_import_tool.textnorm.spell_engine import PySpellEngine, SpellEngine
 
 __all__ = [
@@ -38,4 +39,6 @@ __all__ = [
     "TextNormalizer",
     "build_domain_dictionary",
     "build_initial_abbreviations",
+    "normalize_event",
+    "normalize_events",
 ]
