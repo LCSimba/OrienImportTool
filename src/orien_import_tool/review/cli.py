@@ -63,11 +63,11 @@ def main(argv: list[str] | None = None) -> int:
     export.add_argument("--csv", type=Path, help="Write CSV here.")
     export.add_argument("--markdown", type=Path, help="Write Markdown here.")
 
-    apply = sub.add_parser("apply", help="Apply SME decisions from an edited CSV.")
-    apply.add_argument("--orien", type=Path, required=True)
-    apply.add_argument("--iso-dir", type=Path, default=Path("data/iso14224"))
-    apply.add_argument("--downtime", type=Path)
-    apply.add_argument("--downtime-sheet", default="Conveyor")
+    apply = sub.add_parser(
+        "apply",
+        help="Apply SME decisions from an edited review CSV (reconstructs the "
+        "queue from the CSV — no source workbook needed).",
+    )
     apply.add_argument("--decisions-csv", type=Path, required=True)
     apply.add_argument(
         "--db-url",
@@ -75,8 +75,8 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Optional SQLAlchemy URL (e.g. 'sqlite:///review.db' or "
             "'postgresql+psycopg://user:pass@host/db'). When set, "
-            "alias/mapping/classification decisions and the audit log "
-            "persist to the database."
+            "alias/mapping/classification/abbreviation decisions and the "
+            "audit log persist to the database."
         ),
     )
     apply.add_argument(
