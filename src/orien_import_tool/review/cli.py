@@ -131,6 +131,23 @@ def main(argv: list[str] | None = None) -> int:
             "the answer from being cut off."
         ),
     )
+    mine.add_argument(
+        "--db-url",
+        default="",
+        help=(
+            "Optional SQLAlchemy URL. When set, SME-confirmed aliases and "
+            "abbreviations from prior runs are loaded so classification and "
+            "normalisation benefit from accumulated knowledge."
+        ),
+    )
+    mine.add_argument(
+        "--no-normalize",
+        action="store_true",
+        help=(
+            "Skip text normalisation before classification. Normalisation "
+            "needs the [textnorm] extra (pyspellchecker)."
+        ),
+    )
     _add_llm_args(mine)
 
     abbr = sub.add_parser(
@@ -323,12 +340,20 @@ def _apply(args) -> int:
 
 def _mine_aliases(args) -> int:
     from orien_import_tool.aliases import LLMAliasMiner
+    from orien_import_tool.textnorm import normalize_events
 
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
+    alias_store, abbrev_store = _knowledge_stores(args, equipment, iso_ref)
+
+    normalizer = None
+    if not getattr(args, "no_normalize", False):
+        normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
+
     classifier = AliasClassifier(
         build_seed_index(equipment),
-        alias_store=build_initial_alias_store(equipment, iso_ref),
+        alias_store=alias_store,
+        normalizer=normalizer,
     )
 
     events = parse_xlsx(args.downtime, args.downtime_sheet)
@@ -338,6 +363,9 @@ def _mine_aliases(args) -> int:
         threshold=args.score_threshold,
         cap=args.max_events,
     )
+    # Send the LLM cleaned text — normalisation already fixed typos/abbreviations.
+    if normalizer is not None and low_conf:
+        low_conf, _ = normalize_events(low_conf, normalizer)
     print(
         f"Selected {len(low_conf)}/{len(events)} events below score {args.score_threshold} "
         f"(capped at {args.max_events}). Sending to {args.llm_url} / {args.llm_model}...",
@@ -365,22 +393,58 @@ def _mine_aliases(args) -> int:
     return 0
 
 
-def _mine_abbreviations(args) -> int:
-    import dataclasses
-    from collections import Counter
+def _knowledge_stores(args, equipment, iso_ref):
+    """Build (alias_store, abbreviation_store) = rule seed + DB-persisted rows.
 
+    Without ``--db-url`` returns just the seeded stores. With it, layers the
+    SME/LLM-confirmed rows from prior ``apply`` runs on top — so every run of
+    the pipeline benefits from accumulated, reviewed knowledge.
+    """
+    from orien_import_tool.textnorm import build_initial_abbreviations
+
+    alias_store = build_initial_alias_store(equipment, iso_ref)
+    abbrev_store = build_initial_abbreviations()
+
+    db_url = getattr(args, "db_url", "")
+    if db_url:
+        from orien_import_tool.persistence import (
+            AbbreviationRepository,
+            AliasRepository,
+            init_db,
+            make_engine,
+            make_session_factory,
+        )
+
+        engine = make_engine(db_url)
+        init_db(engine)
+        with make_session_factory(engine)() as session:
+            alias_store.add_many(AliasRepository(session).all())
+            abbrev_store.add_many(AbbreviationRepository(session).all())
+    return alias_store, abbrev_store
+
+
+def _build_normalizer(equipment, iso_ref, abbrev_store):
+    """Construct a TextNormalizer over the domain dictionary + abbreviation store."""
     from orien_import_tool.textnorm import (
-        LLMAbbreviationMiner,
         PySpellEngine,
         TextNormalizer,
         build_domain_dictionary,
     )
 
+    dictionary = build_domain_dictionary(equipment, iso_ref)
+    return TextNormalizer(dictionary, PySpellEngine(dictionary), abbrev_store)
+
+
+def _mine_abbreviations(args) -> int:
+    import dataclasses
+    from collections import Counter
+
+    from orien_import_tool.textnorm import LLMAbbreviationMiner
+
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
-    dictionary = build_domain_dictionary(equipment, iso_ref)
     abbrev_store = _build_abbreviation_store(args)  # seed + any persisted (feedback loop)
-    normalizer = TextNormalizer(dictionary, PySpellEngine(dictionary), abbrev_store)
+    normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
 
     events = parse_xlsx(args.downtime, args.downtime_sheet)
     if args.max_events:

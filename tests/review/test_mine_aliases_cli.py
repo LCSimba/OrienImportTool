@@ -112,6 +112,7 @@ def test_mine_aliases_writes_csv(
             "Qwen3.6-27B-FP8",
             "--max-events",
             "20",
+            "--no-normalize",
             "--csv",
             str(out_csv),
         ]
@@ -183,6 +184,7 @@ def test_score_threshold_filters_events(
             "0.0",
             "--max-events",
             "5",
+            "--no-normalize",
             "--csv",
             str(tmp_path / "low.csv"),
         ]
@@ -213,6 +215,7 @@ def test_score_threshold_filters_events(
             "1.0",
             "--max-events",
             "5",
+            "--no-normalize",
             "--csv",
             str(tmp_path / "high.csv"),
         ]
@@ -222,3 +225,42 @@ def test_score_threshold_filters_events(
     assert high_calls > low_calls, (
         "raising the threshold should select more events to send to the LLM"
     )
+
+
+def test_knowledge_stores_loads_persisted_rows(tmp_path: Path) -> None:
+    """--db-url makes mine-aliases load SME-confirmed aliases + abbreviations."""
+    from types import SimpleNamespace
+
+    from orien_import_tool.aliases import Alias, AliasProposer
+    from orien_import_tool.domain.fmea import Component, Equipment
+    from orien_import_tool.persistence import (
+        AbbreviationRepository,
+        AliasRepository,
+        init_db,
+        make_engine,
+        make_session_factory,
+    )
+    from orien_import_tool.review.cli import _knowledge_stores
+    from orien_import_tool.textnorm.abbreviations import Abbreviation, AbbrevProposer
+
+    db_path = tmp_path / "knowledge.db"
+    url = f"sqlite:///{db_path}"
+    engine = make_engine(url)
+    init_db(engine)
+    with make_session_factory(engine)() as session:
+        AliasRepository(session).add(
+            Alias(alias_text="zzz", canonical_tokens=("stoppage",), proposer=AliasProposer.SME)
+        )
+        AbbreviationRepository(session).add(
+            Abbreviation("peflo", "perform flow check", AbbrevProposer.SME)
+        )
+        session.commit()
+
+    equipment = Equipment(token="eq-1", description="Conveyor", components=[Component("c", "Belt")])
+    args = SimpleNamespace(db_url=url)
+    alias_store, abbrev_store = _knowledge_stores(args, equipment, None)
+
+    # Persisted alias + abbreviation are present alongside the rule seeds.
+    assert alias_store.expand_token("zzz") == {"stoppage"}
+    assert abbrev_store.expand("peflo") == "perform flow check"
+    assert abbrev_store.expand("mtr") == "motor"  # seed still there
