@@ -21,6 +21,11 @@ from orien_import_tool.textnorm.abbreviations import (
     build_initial_abbreviations,
 )
 from orien_import_tool.textnorm.dictionary import DomainDictionary, build_domain_dictionary
+from orien_import_tool.textnorm.miner import (
+    AbbreviationProposal,
+    AbbreviationProposalBatch,
+    LLMAbbreviationMiner,
+)
 from orien_import_tool.textnorm.normalizer import (
     Correction,
     NormalizationResult,
@@ -30,9 +35,12 @@ from orien_import_tool.textnorm.pipeline import normalize_event, normalize_event
 from orien_import_tool.textnorm.spell_engine import PySpellEngine, SpellEngine
 
 __all__ = [
+    "AbbreviationProposal",
+    "AbbreviationProposalBatch",
     "AbbreviationStore",
     "Correction",
     "DomainDictionary",
+    "LLMAbbreviationMiner",
     "NormalizationResult",
     "PySpellEngine",
     "SpellEngine",

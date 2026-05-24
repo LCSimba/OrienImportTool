@@ -128,6 +128,30 @@ def main(argv: list[str] | None = None) -> int:
     )
     _add_llm_args(mine)
 
+    abbr = sub.add_parser(
+        "mine-abbreviations",
+        help="Expand unknown operator shorthand via the LLM (cleanup layer).",
+    )
+    abbr.add_argument("--orien", type=Path, required=True)
+    abbr.add_argument("--iso-dir", type=Path, default=Path("data/iso14224"))
+    abbr.add_argument("--downtime", type=Path, required=True)
+    abbr.add_argument("--downtime-sheet", default="Conveyor")
+    abbr.add_argument("--csv", type=Path, help="Write proposed abbreviations here (else stdout).")
+    abbr.add_argument(
+        "--max-unknowns",
+        type=int,
+        default=150,
+        help="Cap on distinct unknown tokens sent to the LLM (most-frequent first).",
+    )
+    abbr.add_argument(
+        "--max-events",
+        type=int,
+        default=0,
+        help="Cap events scanned for unknown tokens (0 = all). Lower for a quick sample.",
+    )
+    abbr.add_argument("--max-tokens", type=int, default=16384)
+    _add_llm_args(abbr)
+
     args = parser.parse_args(argv)
 
     if args.command == "export":
@@ -136,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         return _apply(args)
     if args.command == "mine-aliases":
         return _mine_aliases(args)
+    if args.command == "mine-abbreviations":
+        return _mine_abbreviations(args)
     return 1
 
 
@@ -309,6 +335,75 @@ def _mine_aliases(args) -> int:
         print(f"Wrote {len(queue)} alias review items to {args.csv}", file=sys.stderr)
     else:
         sys.stdout.write(queue_to_csv(queue))
+    return 0
+
+
+def _mine_abbreviations(args) -> int:
+    import csv
+    from collections import Counter
+    from io import StringIO
+
+    from orien_import_tool.textnorm import (
+        LLMAbbreviationMiner,
+        PySpellEngine,
+        TextNormalizer,
+        build_domain_dictionary,
+        build_initial_abbreviations,
+    )
+
+    equipment = normalize(parse_workbook(args.orien))
+    iso_ref = load_all(args.iso_dir)
+    dictionary = build_domain_dictionary(equipment, iso_ref)
+    normalizer = TextNormalizer(
+        dictionary, PySpellEngine(dictionary), build_initial_abbreviations()
+    )
+
+    events = parse_xlsx(args.downtime, args.downtime_sheet)
+    if args.max_events:
+        events = events[: args.max_events]
+    unknown_freq: Counter[str] = Counter()
+    for event in events:
+        for token in normalizer.normalize(event.text).unknown_tokens:
+            unknown_freq[token] += 1
+
+    top_unknowns = Counter(dict(unknown_freq.most_common(args.max_unknowns)))
+    print(
+        f"Found {len(unknown_freq)} distinct unknown tokens; "
+        f"sending top {len(top_unknowns)} to {args.llm_url} / {args.llm_model}...",
+        file=sys.stderr,
+    )
+
+    client = _make_llm_client(args)
+    miner = LLMAbbreviationMiner(
+        equipment=equipment,
+        iso_ref=iso_ref,
+        client=client,
+        model=args.llm_model,
+        max_tokens=args.max_tokens,
+    )
+    proposed = miner.mine(top_unknowns, skip_known=build_initial_abbreviations())
+    print(f"Got {len(proposed)} expandable abbreviation proposals.", file=sys.stderr)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["short", "expansion", "frequency", "confidence", "rationale", "verdict"])
+    for abbrev in sorted(proposed, key=lambda a: -unknown_freq.get(a.short, 0)):
+        writer.writerow(
+            [
+                abbrev.short,
+                abbrev.expansion,
+                unknown_freq.get(abbrev.short, 0),
+                f"{abbrev.confidence:.2f}",
+                abbrev.rationale,
+                "",
+            ]
+        )
+    output = buffer.getvalue()
+    if args.csv:
+        args.csv.write_text(output, encoding="utf-8")
+        print(f"Wrote {len(proposed)} abbreviation proposals to {args.csv}", file=sys.stderr)
+    else:
+        sys.stdout.write(output)
     return 0
 
 
