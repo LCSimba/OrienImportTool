@@ -27,9 +27,14 @@ from orien_import_tool.importers.orien import normalize, parse_workbook
 from orien_import_tool.iso14224 import load_all
 from orien_import_tool.mapping import propose_mappings
 from orien_import_tool.review.applier import apply_decisions
-from orien_import_tool.review.builders import build_alias_review, build_unified_queue
+from orien_import_tool.review.builders import (
+    build_abbreviation_review,
+    build_alias_review,
+    build_unified_queue,
+)
 from orien_import_tool.review.exporters import (
     decisions_from_csv,
+    queue_from_csv,
     queue_to_csv,
     queue_to_markdown,
 )
@@ -150,6 +155,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Cap events scanned for unknown tokens (0 = all). Lower for a quick sample.",
     )
     abbr.add_argument("--max-tokens", type=int, default=16384)
+    abbr.add_argument(
+        "--db-url",
+        default="",
+        help=(
+            "Optional SQLAlchemy URL. When set, SME-confirmed abbreviations "
+            "from prior runs are loaded so the normaliser expands them and "
+            "they no longer surface as unknown — the store self-improves."
+        ),
+    )
     _add_llm_args(abbr)
 
     args = parser.parse_args(argv)
@@ -249,11 +263,16 @@ def _export(args) -> int:
 
 
 def _apply(args) -> int:
-    queue = _build_queue(args)
-    decisions = decisions_from_csv(args.decisions_csv.read_text(encoding="utf-8"))
+    csv_text = args.decisions_csv.read_text(encoding="utf-8")
+    decisions = decisions_from_csv(csv_text)
+    # Reconstruct the queue from the CSV itself (payload_json carries each
+    # item's context), so LLM-derived items (aliases, abbreviations) round-trip
+    # without re-running the proposer that produced them.
+    queue = queue_from_csv(csv_text)
 
     if args.db_url:
         from orien_import_tool.persistence import (
+            AbbreviationRepository,
             AliasRepository,
             AuditLogRepository,
             DowntimeRepository,
@@ -273,18 +292,26 @@ def _apply(args) -> int:
                 alias_repository=AliasRepository(session),
                 mapping_repository=MappingRepository(session),
                 downtime_repository=DowntimeRepository(session),
+                abbreviation_repository=AbbreviationRepository(session),
                 audit_log_repository=AuditLogRepository(session),
                 sme_user=args.sme_user,
             )
             session.commit()
     else:
-        alias_store = build_initial_alias_store()
-        result = apply_decisions(decisions, queue, alias_store=alias_store, sme_user=args.sme_user)
+        from orien_import_tool.textnorm import AbbreviationStore
+
+        result = apply_decisions(
+            decisions,
+            queue,
+            alias_store=build_initial_alias_store(),
+            abbreviation_store=AbbreviationStore(),
+            sme_user=args.sme_user,
+        )
 
     print(
         f"Applied {len(decisions)} decisions: "
-        f"+{result.aliases_added} aliases, "
-        f"-{result.aliases_rejected} rejected, "
+        f"+{result.aliases_added} aliases (-{result.aliases_rejected}), "
+        f"+{result.abbreviations_added} abbreviations (-{result.abbreviations_rejected}), "
         f"{result.mappings_recorded} mappings, "
         f"{result.classifications_recorded} classifications, "
         f"{result.audit_entries} audit entries, "
@@ -339,24 +366,21 @@ def _mine_aliases(args) -> int:
 
 
 def _mine_abbreviations(args) -> int:
-    import csv
+    import dataclasses
     from collections import Counter
-    from io import StringIO
 
     from orien_import_tool.textnorm import (
         LLMAbbreviationMiner,
         PySpellEngine,
         TextNormalizer,
         build_domain_dictionary,
-        build_initial_abbreviations,
     )
 
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
     dictionary = build_domain_dictionary(equipment, iso_ref)
-    normalizer = TextNormalizer(
-        dictionary, PySpellEngine(dictionary), build_initial_abbreviations()
-    )
+    abbrev_store = _build_abbreviation_store(args)  # seed + any persisted (feedback loop)
+    normalizer = TextNormalizer(dictionary, PySpellEngine(dictionary), abbrev_store)
 
     events = parse_xlsx(args.downtime, args.downtime_sheet)
     if args.max_events:
@@ -381,30 +405,52 @@ def _mine_abbreviations(args) -> int:
         model=args.llm_model,
         max_tokens=args.max_tokens,
     )
-    proposed = miner.mine(top_unknowns, skip_known=build_initial_abbreviations())
+    # Don't re-propose shorthand already in the store (seed or confirmed).
+    proposed = miner.mine(top_unknowns, skip_known=abbrev_store)
     print(f"Got {len(proposed)} expandable abbreviation proposals.", file=sys.stderr)
 
-    buffer = StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(["short", "expansion", "frequency", "confidence", "rationale", "verdict"])
-    for abbrev in sorted(proposed, key=lambda a: -unknown_freq.get(a.short, 0)):
-        writer.writerow(
-            [
-                abbrev.short,
-                abbrev.expansion,
-                unknown_freq.get(abbrev.short, 0),
-                f"{abbrev.confidence:.2f}",
-                abbrev.rationale,
-                "",
-            ]
+    # Stash observed frequency into the rationale so the SME can prioritise.
+    enriched = [
+        dataclasses.replace(
+            a, rationale=f"(seen {unknown_freq.get(a.short, 0)}x) {a.rationale}".strip()
         )
-    output = buffer.getvalue()
+        for a in proposed
+    ]
+    queue = build_abbreviation_review(enriched)
     if args.csv:
-        args.csv.write_text(output, encoding="utf-8")
-        print(f"Wrote {len(proposed)} abbreviation proposals to {args.csv}", file=sys.stderr)
+        args.csv.write_text(queue_to_csv(queue), encoding="utf-8")
+        print(f"Wrote {len(queue)} abbreviation review items to {args.csv}", file=sys.stderr)
     else:
-        sys.stdout.write(output)
+        sys.stdout.write(queue_to_csv(queue))
     return 0
+
+
+def _build_abbreviation_store(args):
+    """Seed abbreviations + any SME/LLM rows persisted in the DB (feedback loop).
+
+    When ``--db-url`` is set, confirmed abbreviations from a prior ``apply``
+    run are layered on top of the rule seed, so the normaliser expands them
+    and they no longer surface as unknown tokens — the store self-improves
+    across runs.
+    """
+    from orien_import_tool.textnorm import build_initial_abbreviations
+
+    db_url = getattr(args, "db_url", "")
+    if not db_url:
+        return build_initial_abbreviations()
+
+    from orien_import_tool.persistence import (
+        AbbreviationRepository,
+        init_db,
+        make_engine,
+        make_session_factory,
+    )
+
+    engine = make_engine(db_url)
+    init_db(engine)
+    factory = make_session_factory(engine)
+    with factory() as session:
+        return AbbreviationRepository(session).to_store(seeded=True)
 
 
 def _select_low_confidence_events(

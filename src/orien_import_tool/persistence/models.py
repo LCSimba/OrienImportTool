@@ -146,6 +146,30 @@ class AliasRow(Base):
     __table_args__ = (Index("ix_aliases_text", "alias_text"),)
 
 
+class AbbreviationRow(Base):
+    """Operator-shorthand expansion (c/v -> conveyor, instr -> instrument).
+
+    Distinct from AliasRow: an abbreviation rewrites the *text* (one expansion
+    string) during normalisation, whereas an alias maps to canonical *tokens*
+    for matching. Same superseded_by_id supersession model.
+    """
+
+    __tablename__ = "abbreviations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    short: Mapped[str] = mapped_column(String, nullable=False)
+    expansion: Mapped[str] = mapped_column(String, nullable=False)
+    proposer: Mapped[str] = mapped_column(String, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    superseded_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("abbreviations.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (Index("ix_abbreviations_short", "short"),)
+
+
 class DowntimeEventRow(Base):
     __tablename__ = "downtime_events"
 

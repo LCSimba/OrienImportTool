@@ -46,9 +46,15 @@ from orien_import_tool.review.models import (
     ReviewQueue,
     ReviewVerdict,
 )
+from orien_import_tool.textnorm.abbreviations import (
+    Abbreviation,
+    AbbreviationStore,
+    AbbrevProposer,
+)
 
 if TYPE_CHECKING:
     from orien_import_tool.persistence.repositories import (
+        AbbreviationRepository,
         AliasRepository,
         AuditLogRepository,
         DowntimeRepository,
@@ -70,6 +76,8 @@ class ApplyResult:
     aliases_rejected: int = 0
     mappings_recorded: int = 0
     classifications_recorded: int = 0
+    abbreviations_added: int = 0
+    abbreviations_rejected: int = 0
     audit_entries: int = 0
     skipped: list[str] = field(default_factory=list)
 
@@ -82,6 +90,8 @@ def apply_decisions(
     alias_repository: AliasRepository | None = None,
     mapping_repository: MappingRepository | None = None,
     downtime_repository: DowntimeRepository | None = None,
+    abbreviation_store: AbbreviationStore | None = None,
+    abbreviation_repository: AbbreviationRepository | None = None,
     audit_log_repository: AuditLogRepository | None = None,
     sme_user: str = "",
 ) -> ApplyResult:
@@ -99,6 +109,8 @@ def apply_decisions(
             _apply_mapping(decision, item, mapping_repository, result)
         elif item.item_type == ReviewItemType.CLASSIFICATION:
             _apply_classification(decision, item, downtime_repository, result)
+        elif item.item_type == ReviewItemType.ABBREVIATION:
+            _apply_abbreviation(decision, item, abbreviation_store, abbreviation_repository, result)
 
         if audit_log_repository is not None:
             _audit(audit_log_repository, decision, item, sme_user)
@@ -148,6 +160,48 @@ def _apply_alias(
     if alias_repository is not None:
         alias_repository.add(sme_alias)
     result.aliases_added += 1
+
+
+# --- Abbreviation -------------------------------------------------------------------
+
+
+def _apply_abbreviation(
+    decision: ReviewDecision,
+    item: ReviewItem,
+    abbreviation_store: AbbreviationStore | None,
+    abbreviation_repository: AbbreviationRepository | None,
+    result: ApplyResult,
+) -> None:
+    if decision.verdict == ReviewVerdict.REJECTED:
+        result.abbreviations_rejected += 1
+        return
+    if decision.verdict not in (ReviewVerdict.ACCEPTED, ReviewVerdict.CORRECTED):
+        return
+    if abbreviation_store is None and abbreviation_repository is None:
+        result.skipped.append(item.item_id)
+        return
+
+    payload = item.payload
+    expansion = str(payload.get("expansion", ""))
+    if decision.verdict == ReviewVerdict.CORRECTED and decision.chosen_alternative:
+        expansion = decision.chosen_alternative
+    short = str(payload.get("short", ""))
+    if not short or not expansion:
+        result.skipped.append(item.item_id)
+        return
+
+    sme_abbrev = Abbreviation(
+        short=short,
+        expansion=expansion,
+        proposer=AbbrevProposer.SME,
+        confidence=1.0,
+        rationale=decision.note or "Confirmed by SME review",
+    )
+    if abbreviation_store is not None:
+        abbreviation_store.add(sme_abbrev)
+    if abbreviation_repository is not None:
+        abbreviation_repository.add(sme_abbrev)
+    result.abbreviations_added += 1
 
 
 # --- Mapping ------------------------------------------------------------------------

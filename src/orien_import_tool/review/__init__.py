@@ -9,6 +9,7 @@ list of :class:`ReviewDecision` rows. Accepted decisions feed the
 
 from orien_import_tool.review.applier import ApplyResult, apply_decisions
 from orien_import_tool.review.builders import (
+    build_abbreviation_review,
     build_alias_review,
     build_classification_review,
     build_mapping_review,
@@ -16,6 +17,7 @@ from orien_import_tool.review.builders import (
 )
 from orien_import_tool.review.exporters import (
     decisions_from_csv,
+    queue_from_csv,
     queue_to_csv,
     queue_to_markdown,
 )
@@ -35,11 +37,13 @@ __all__ = [
     "ReviewQueue",
     "ReviewVerdict",
     "apply_decisions",
+    "build_abbreviation_review",
     "build_alias_review",
     "build_classification_review",
     "build_mapping_review",
     "build_unified_queue",
     "decisions_from_csv",
+    "queue_from_csv",
     "queue_to_csv",
     "queue_to_markdown",
 ]

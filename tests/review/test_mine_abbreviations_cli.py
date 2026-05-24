@@ -104,7 +104,10 @@ def test_mine_abbreviations_writes_csv(tmp_path: Path, fixtures_present, monkeyp
     )
     assert rc == 0
     text = out.read_text(encoding="utf-8")
-    # Header + the expandable proposal; the non-expandable one is filtered out.
-    assert "short,expansion" in text.splitlines()[0]
-    assert "instr,instrument" in text
+    # Now a review-queue CSV (round-trippable through `apply`).
+    assert "item_id,item_type" in text.splitlines()[0]
+    # The expandable proposal is present as an abbreviation review item...
+    assert "abbr:instr:instrument" in text
+    assert "abbreviation" in text
+    # ...and the non-expandable product name is filtered out by the miner.
     assert "simocode" not in text

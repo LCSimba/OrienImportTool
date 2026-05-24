@@ -38,6 +38,7 @@ from orien_import_tool.review import (
     build_mapping_review,
     build_unified_queue,
     decisions_from_csv,
+    queue_from_csv,
     queue_to_csv,
     queue_to_markdown,
 )
@@ -225,20 +226,30 @@ def test_build_unified_queue_combines_all_sources(
 
 
 def test_csv_round_trip_preserves_item_ids(small_equipment, iso_dir):
+    import csv as _csv
+    import io
+
     ref = load_all(iso_dir)
     queue = build_mapping_review(propose_mappings(small_equipment, ref))
     csv_text = queue_to_csv(queue)
     assert "item_id,item_type" in csv_text
-    # Mark the first item as accepted; round-trip.
     target_id = queue.items[0].item_id
-    rows = csv_text.splitlines()
-    header_idx = rows[0].split(",").index("verdict")
-    first_data_row = rows[1].split(",")
-    first_data_row[header_idx] = "accepted"
-    rows[1] = ",".join(first_data_row)
-    edited = "\n".join(rows) + "\n"
+
+    # Edit via the csv module (payload_json contains commas — naive split breaks).
+    reader = list(_csv.DictReader(io.StringIO(csv_text)))
+    reader[0]["verdict"] = "accepted"
+    out = io.StringIO()
+    writer = _csv.DictWriter(out, fieldnames=reader[0].keys())
+    writer.writeheader()
+    writer.writerows(reader)
+    edited = out.getvalue()
+
     decisions = decisions_from_csv(edited)
     assert any(d.item_id == target_id and d.verdict == ReviewVerdict.ACCEPTED for d in decisions)
+    # The payload survives the round-trip so apply can reconstruct the item.
+    rebuilt = queue_from_csv(edited)
+    assert rebuilt.get(target_id) is not None
+    assert rebuilt.get(target_id).payload["source_entity_id"] == "fm-1"
 
 
 def test_decisions_from_csv_skips_blank_verdicts() -> None:

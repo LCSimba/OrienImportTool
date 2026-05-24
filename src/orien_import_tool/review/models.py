@@ -13,6 +13,7 @@ class ReviewItemType(StrEnum):
     ISO_MAPPING = "iso_mapping"
     ALIAS = "alias"
     CLASSIFICATION = "classification"
+    ABBREVIATION = "abbreviation"
 
 
 class ReviewVerdict(StrEnum):

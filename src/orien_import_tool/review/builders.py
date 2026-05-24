@@ -19,6 +19,7 @@ from orien_import_tool.review.models import (
     ReviewItemType,
     ReviewQueue,
 )
+from orien_import_tool.textnorm.abbreviations import Abbreviation, AbbrevProposer
 
 # --- Mapping reviews -----------------------------------------------------------------
 
@@ -112,6 +113,39 @@ def _alias_item_id(alias: Alias) -> str:
     tokens = ",".join(sorted(alias.canonical_tokens))
     scope = alias.scope_equipment_token or "global"
     return f"alias:{alias.alias_text}:{tokens}:{scope}"
+
+
+# --- Abbreviation reviews ------------------------------------------------------------
+
+
+def build_abbreviation_review(abbreviations: Iterable[Abbreviation]) -> ReviewQueue:
+    """Convert LLM-proposed abbreviations into ReviewItems for SME accept/reject.
+
+    Rule-seeded and SME-confirmed abbreviations are skipped — only LLM
+    proposals need review.
+    """
+    queue = ReviewQueue()
+    for abbrev in abbreviations:
+        if abbrev.proposer != AbbrevProposer.LLM:
+            continue
+        queue.items.append(
+            ReviewItem(
+                item_id=f"abbr:{abbrev.short}:{abbrev.expansion}",
+                item_type=ReviewItemType.ABBREVIATION,
+                summary=f"abbreviation '{abbrev.short}' -> '{abbrev.expansion}'",
+                detail=abbrev.rationale,
+                primary_proposal=abbrev.expansion,
+                alternates=(),
+                confidence=abbrev.confidence,
+                proposer=abbrev.proposer.value,
+                payload={
+                    "short": abbrev.short,
+                    "expansion": abbrev.expansion,
+                    "rationale": abbrev.rationale,
+                },
+            )
+        )
+    return queue
 
 
 # --- Classification reviews ----------------------------------------------------------

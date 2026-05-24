@@ -107,6 +107,10 @@ class AbbreviationStore:
                 return
         self._by_short[key].append(abbrev)
 
+    def add_many(self, abbreviations: object) -> None:
+        for abbrev in abbreviations:  # type: ignore[attr-defined]
+            self.add(abbrev)
+
     def expand(self, token: str) -> str | None:
         """Return the highest-precedence expansion for ``token``, or None.
 

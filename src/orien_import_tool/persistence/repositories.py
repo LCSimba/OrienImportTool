@@ -30,6 +30,7 @@ from orien_import_tool.domain.fmea import Equipment
 from orien_import_tool.mapping.models import Iso14224Mapping, MappingDimension
 from orien_import_tool.persistence import mappers
 from orien_import_tool.persistence.models import (
+    AbbreviationRow,
     AliasRow,
     AuditLogRow,
     ComponentRow,
@@ -37,6 +38,11 @@ from orien_import_tool.persistence.models import (
     DowntimeEventRow,
     EquipmentRow,
     Iso14224MappingRow,
+)
+from orien_import_tool.textnorm.abbreviations import (
+    Abbreviation,
+    AbbreviationStore,
+    build_initial_abbreviations,
 )
 
 # --- EquipmentRepository ------------------------------------------------------------
@@ -189,6 +195,44 @@ class AliasRepository:
     def to_alias_store(self) -> AliasStore:
         """Return an :class:`AliasStore` populated with every active alias."""
         store = AliasStore()
+        store.add_many(self.all())
+        return store
+
+
+# --- AbbreviationRepository ---------------------------------------------------------
+
+
+class AbbreviationRepository:
+    """Persist Abbreviation rows and rehydrate them into an AbbreviationStore."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, abbrev: Abbreviation) -> None:
+        self._session.add(mappers.abbreviation_to_orm(abbrev))
+
+    def add_many(self, abbreviations: Iterable[Abbreviation]) -> int:
+        count = 0
+        for abbrev in abbreviations:
+            self._session.add(mappers.abbreviation_to_orm(abbrev))
+            count += 1
+        return count
+
+    def all(self, *, include_superseded: bool = False) -> list[Abbreviation]:
+        stmt = select(AbbreviationRow)
+        if not include_superseded:
+            stmt = stmt.where(AbbreviationRow.superseded_by_id.is_(None))
+        rows = self._session.execute(stmt).scalars().all()
+        return [mappers.abbreviation_from_orm(row) for row in rows]
+
+    def to_store(self, *, seeded: bool = True) -> AbbreviationStore:
+        """Return an AbbreviationStore = (optional rule seed) + persisted rows.
+
+        ``seeded=True`` starts from :func:`build_initial_abbreviations` (the
+        domain-general CMMS shorthand) and layers the persisted SME/LLM rows
+        on top — the store the normaliser should use in production.
+        """
+        store = build_initial_abbreviations() if seeded else AbbreviationStore()
         store.add_many(self.all())
         return store
 

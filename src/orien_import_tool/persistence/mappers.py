@@ -41,6 +41,7 @@ from orien_import_tool.mapping.models import (
     Proposer,
 )
 from orien_import_tool.persistence.models import (
+    AbbreviationRow,
     AliasRow,
     ComponentRow,
     DowntimeClassificationRow,
@@ -49,6 +50,7 @@ from orien_import_tool.persistence.models import (
     FailureModeRow,
     Iso14224MappingRow,
 )
+from orien_import_tool.textnorm.abbreviations import Abbreviation, AbbrevProposer
 
 # --- Equipment / Component / FailureMode --------------------------------------------
 
@@ -234,6 +236,29 @@ def alias_from_orm(row: AliasRow) -> Alias:
         confidence=row.confidence,
         scope_equipment_token=row.scope_equipment_token or None,
         iso_hint=row.iso_hint,
+        rationale=row.rationale,
+    )
+
+
+# --- Abbreviation -------------------------------------------------------------------
+
+
+def abbreviation_to_orm(abbrev: Abbreviation) -> AbbreviationRow:
+    return AbbreviationRow(
+        short=abbrev.short,
+        expansion=abbrev.expansion,
+        proposer=abbrev.proposer.value,
+        confidence=abbrev.confidence,
+        rationale=abbrev.rationale,
+    )
+
+
+def abbreviation_from_orm(row: AbbreviationRow) -> Abbreviation:
+    return Abbreviation(
+        short=row.short,
+        expansion=row.expansion,
+        proposer=AbbrevProposer(row.proposer),
+        confidence=row.confidence,
         rationale=row.rationale,
     )
 

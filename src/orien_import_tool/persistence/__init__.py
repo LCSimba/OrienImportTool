@@ -10,6 +10,7 @@ generic types, no Postgres-specific arrays.
 """
 
 from orien_import_tool.persistence.models import (
+    AbbreviationRow,
     AliasRow,
     AuditLogRow,
     Base,
@@ -21,6 +22,7 @@ from orien_import_tool.persistence.models import (
     Iso14224MappingRow,
 )
 from orien_import_tool.persistence.repositories import (
+    AbbreviationRepository,
     AliasRepository,
     AuditLogRepository,
     DowntimeRepository,
@@ -34,6 +36,8 @@ from orien_import_tool.persistence.session import (
 )
 
 __all__ = [
+    "AbbreviationRepository",
+    "AbbreviationRow",
     "AliasRepository",
     "AliasRow",
     "AuditLogRepository",

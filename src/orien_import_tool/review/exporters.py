@@ -20,6 +20,7 @@ for inspection / audit, not edit-and-reimport.
 from __future__ import annotations
 
 import csv
+import json
 from collections.abc import Iterable
 from datetime import datetime
 from io import StringIO
@@ -41,6 +42,7 @@ CSV_FIELDS = (
     "alternates",
     "confidence",
     "proposer",
+    "payload_json",
     "verdict",
     "chosen_alternative",
     "note",
@@ -52,7 +54,12 @@ CSV_FIELDS = (
 
 
 def queue_to_csv(queue: ReviewQueue) -> str:
-    """Serialise the queue with empty decision columns ready for SME edit."""
+    """Serialise the queue with empty decision columns ready for SME edit.
+
+    ``payload_json`` carries the item's full payload so :func:`queue_from_csv`
+    can rebuild the queue from the CSV alone — the apply step then doesn't
+    need to re-derive LLM-proposed items (aliases, abbreviations) from source.
+    """
     buffer = StringIO()
     writer = csv.DictWriter(buffer, fieldnames=CSV_FIELDS)
     writer.writeheader()
@@ -67,6 +74,7 @@ def queue_to_csv(queue: ReviewQueue) -> str:
                 "alternates": " | ".join(item.alternates),
                 "confidence": f"{item.confidence:.3f}",
                 "proposer": item.proposer,
+                "payload_json": json.dumps(item.payload, sort_keys=True),
                 "verdict": "",
                 "chosen_alternative": "",
                 "note": "",
@@ -74,6 +82,50 @@ def queue_to_csv(queue: ReviewQueue) -> str:
             }
         )
     return buffer.getvalue()
+
+
+def queue_from_csv(csv_text: str) -> ReviewQueue:
+    """Rebuild a :class:`ReviewQueue` from a CSV produced by :func:`queue_to_csv`.
+
+    Reconstructs each :class:`ReviewItem` from its row, including the payload
+    (from ``payload_json``). Lets the apply step operate on the CSV alone,
+    without re-running the proposer that produced it.
+    """
+    queue = ReviewQueue()
+    reader = csv.DictReader(StringIO(csv_text))
+    for row in reader:
+        item_type_raw = (row.get("item_type") or "").strip()
+        if not item_type_raw:
+            continue
+        try:
+            item_type = ReviewItemType(item_type_raw)
+        except ValueError:
+            continue
+        payload_raw = (row.get("payload_json") or "").strip()
+        try:
+            payload = json.loads(payload_raw) if payload_raw else {}
+        except json.JSONDecodeError:
+            payload = {}
+        alternates_raw = (row.get("alternates") or "").strip()
+        alternates = tuple(a.strip() for a in alternates_raw.split("|") if a.strip())
+        try:
+            confidence = float(row.get("confidence") or 0.0)
+        except ValueError:
+            confidence = 0.0
+        queue.items.append(
+            ReviewItem(
+                item_id=(row.get("item_id") or "").strip(),
+                item_type=item_type,
+                summary=(row.get("summary") or "").strip(),
+                detail=(row.get("detail") or "").strip(),
+                primary_proposal=(row.get("primary_proposal") or "").strip(),
+                alternates=alternates,
+                confidence=confidence,
+                proposer=(row.get("proposer") or "").strip(),
+                payload=payload,
+            )
+        )
+    return queue
 
 
 # --- CSV import (decisions) ----------------------------------------------------------
