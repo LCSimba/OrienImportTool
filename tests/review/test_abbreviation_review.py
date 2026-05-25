@@ -199,3 +199,52 @@ def test_end_to_end_csv_to_persist(session: Session) -> None:
     store = repo.to_store(seeded=False)
     assert store.expand("instr") == "instrument"
     assert store.expand("gbx") == "gearbox"
+
+
+# --- unexpandable-token review (the "what we didn't expand" category) ----------------
+
+
+def test_build_unexpandable_review_surfaces_tokens() -> None:
+    from orien_import_tool.review import build_unexpandable_review
+    from orien_import_tool.textnorm import UnexpandableToken
+
+    queue = build_unexpandable_review(
+        [
+            UnexpandableToken(
+                "simocode", rationale="Siemens product", confidence=0.8, group="product"
+            )
+        ]
+    )
+    assert len(queue) == 1
+    item = queue.items[0]
+    assert item.item_type == ReviewItemType.UNKNOWN_TOKEN
+    assert item.primary_proposal == ""
+    assert item.payload == {"short": "simocode", "rationale": "Siemens product", "group": "product"}
+
+
+def test_corrected_unknown_token_becomes_sme_abbreviation() -> None:
+    from orien_import_tool.review import build_unexpandable_review
+    from orien_import_tool.textnorm import UnexpandableToken
+
+    queue = build_unexpandable_review([UnexpandableToken("splc", rationale="looks like a code")])
+    store = AbbreviationStore()
+    decision = ReviewDecision(
+        item_id=queue.items[0].item_id,
+        verdict=ReviewVerdict.CORRECTED,
+        chosen_alternative="safety plc",
+    )
+    result = apply_decisions([decision], queue, abbreviation_store=store)
+    assert result.abbreviations_added == 1
+    assert store.expand("splc") == "safety plc"
+
+
+def test_accepted_unknown_token_writes_nothing() -> None:
+    from orien_import_tool.review import build_unexpandable_review
+    from orien_import_tool.textnorm import UnexpandableToken
+
+    queue = build_unexpandable_review([UnexpandableToken("vuma", rationale="conveyor name")])
+    store = AbbreviationStore()
+    decision = ReviewDecision(item_id=queue.items[0].item_id, verdict=ReviewVerdict.ACCEPTED)
+    result = apply_decisions([decision], queue, abbreviation_store=store)
+    assert result.abbreviations_added == 0
+    assert store.expand("vuma") is None

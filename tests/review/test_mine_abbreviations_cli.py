@@ -109,5 +109,7 @@ def test_mine_abbreviations_writes_csv(tmp_path: Path, fixtures_present, monkeyp
     # The expandable proposal is present as an abbreviation review item...
     assert "abbr:instr:instrument" in text
     assert "abbreviation" in text
-    # ...and the non-expandable product name is filtered out by the miner.
-    assert "simocode" not in text
+    # ...and the non-expandable product name is surfaced as its own category
+    # (so the SME can confirm or override the 'not an abbreviation' call).
+    assert "unknown:simocode" in text
+    assert "unknown_token" in text

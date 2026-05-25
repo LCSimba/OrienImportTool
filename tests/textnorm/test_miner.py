@@ -66,6 +66,41 @@ def test_mine_returns_expandable_only() -> None:
     assert result[0].proposer == AbbrevProposer.LLM
 
 
+def test_mine_all_splits_expandable_from_unexpandable() -> None:
+    """mine_all keeps both halves; mine() still returns just the expandable list."""
+    canned = AbbreviationProposalBatch(
+        proposals=[
+            AbbreviationProposal(
+                short="instr",
+                expansion="instrument",
+                is_expandable=True,
+                confidence=0.9,
+                rationale="abbrev",
+                group="instrumentation",
+            ),
+            AbbreviationProposal(
+                short="simocode",
+                expansion="",
+                is_expandable=False,
+                confidence=0.8,
+                rationale="Siemens product",
+                group="product",
+            ),
+        ]
+    )
+    miner = LLMAbbreviationMiner(client=FakeClient(canned))
+    result = miner.mine_all(["instr", "simocode"])
+
+    assert [a.short for a in result.expandable] == ["instr"]
+    assert [t.short for t in result.not_expandable] == ["simocode"]
+    assert result.not_expandable[0].rationale == "Siemens product"
+    assert result.not_expandable[0].group == "product"
+    # Backwards-compatible: mine() returns only the expandable abbreviations
+    # (fresh client — the fake pops its single canned response per call).
+    miner2 = LLMAbbreviationMiner(client=FakeClient(canned))
+    assert [a.short for a in miner2.mine(["instr", "simocode"])] == ["instr"]
+
+
 def test_group_label_carried_to_abbreviation() -> None:
     """The LLM's family label rides through to the mined Abbreviation."""
     canned = AbbreviationProposalBatch(

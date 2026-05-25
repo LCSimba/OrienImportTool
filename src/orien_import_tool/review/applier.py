@@ -111,6 +111,10 @@ def apply_decisions(
             _apply_classification(decision, item, downtime_repository, result)
         elif item.item_type == ReviewItemType.ABBREVIATION:
             _apply_abbreviation(decision, item, abbreviation_store, abbreviation_repository, result)
+        elif item.item_type == ReviewItemType.UNKNOWN_TOKEN:
+            _apply_unknown_token(
+                decision, item, abbreviation_store, abbreviation_repository, result
+            )
 
         if audit_log_repository is not None:
             _audit(audit_log_repository, decision, item, sme_user)
@@ -196,6 +200,43 @@ def _apply_abbreviation(
         proposer=AbbrevProposer.SME,
         confidence=1.0,
         rationale=decision.note or "Confirmed by SME review",
+    )
+    if abbreviation_store is not None:
+        abbreviation_store.add(sme_abbrev)
+    if abbreviation_repository is not None:
+        abbreviation_repository.add(sme_abbrev)
+    result.abbreviations_added += 1
+
+
+def _apply_unknown_token(
+    decision: ReviewDecision,
+    item: ReviewItem,
+    abbreviation_store: AbbreviationStore | None,
+    abbreviation_repository: AbbreviationRepository | None,
+    result: ApplyResult,
+) -> None:
+    """SME override of a token the miner left unexpanded.
+
+    Only CORRECTED (with a supplied expansion) does anything — it rescues the
+    token as an SME abbreviation. ACCEPTED ("correctly left as-is") and
+    REJECTED write nothing; the audit-log entry is the record.
+    """
+    if decision.verdict != ReviewVerdict.CORRECTED or not decision.chosen_alternative:
+        return
+    if abbreviation_store is None and abbreviation_repository is None:
+        result.skipped.append(item.item_id)
+        return
+    short = str(item.payload.get("short", ""))
+    if not short:
+        result.skipped.append(item.item_id)
+        return
+
+    sme_abbrev = Abbreviation(
+        short=short,
+        expansion=decision.chosen_alternative,
+        proposer=AbbrevProposer.SME,
+        confidence=1.0,
+        rationale=decision.note or "SME expanded a token the miner left as-is",
     )
     if abbreviation_store is not None:
         abbreviation_store.add(sme_abbrev)

@@ -14,6 +14,7 @@ class ReviewItemType(StrEnum):
     ALIAS = "alias"
     CLASSIFICATION = "classification"
     ABBREVIATION = "abbreviation"
+    UNKNOWN_TOKEN = "unknown_token"
 
 
 class ReviewVerdict(StrEnum):

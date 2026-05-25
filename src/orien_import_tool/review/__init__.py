@@ -13,6 +13,7 @@ from orien_import_tool.review.builders import (
     build_alias_review,
     build_classification_review,
     build_mapping_review,
+    build_unexpandable_review,
     build_unified_queue,
 )
 from orien_import_tool.review.exporters import (
@@ -41,6 +42,7 @@ __all__ = [
     "build_alias_review",
     "build_classification_review",
     "build_mapping_review",
+    "build_unexpandable_review",
     "build_unified_queue",
     "decisions_from_csv",
     "queue_from_csv",

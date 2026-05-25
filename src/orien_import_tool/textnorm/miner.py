@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -93,6 +93,29 @@ class AbbreviationProposalBatch(BaseModel):
     proposals: list[AbbreviationProposal] = Field(default_factory=list)
 
 
+@dataclass(frozen=True, slots=True)
+class UnexpandableToken:
+    """An unknown token the miner judged is *not* an abbreviation.
+
+    Product names, equipment codes, proper nouns — surfaced for SME review so
+    the "don't expand" decision is visible and overridable, not silently
+    dropped. ``group`` clusters related ones (e.g. all the conveyor names).
+    """
+
+    short: str
+    rationale: str = ""
+    confidence: float = 0.0
+    group: str = ""
+
+
+@dataclass
+class AbbreviationMiningResult:
+    """Both halves of one mining pass: expansions + the tokens left as-is."""
+
+    expandable: list[Abbreviation] = field(default_factory=list)
+    not_expandable: list[UnexpandableToken] = field(default_factory=list)
+
+
 class LLMAbbreviationMiner:
     """Mines abbreviation expansions from unknown operator tokens."""
 
@@ -140,8 +163,24 @@ class LLMAbbreviationMiner:
         folded into the prompt so the model disambiguates from real context
         rather than the bare token.
         """
+        return self.mine_all(unknown_tokens, skip_known=skip_known, context=context).expandable
+
+    def mine_all(
+        self,
+        unknown_tokens: Iterable[str] | Counter[str],
+        *,
+        skip_known: AbbreviationStore | None = None,
+        context: Mapping[str, TokenContext] | None = None,
+    ) -> AbbreviationMiningResult:
+        """Like :meth:`mine`, but also return the tokens left *unexpanded*.
+
+        The same single LLM call decides expandability for every token; this
+        keeps both halves. Non-expandable tokens (product names, equipment
+        codes) come back as :class:`UnexpandableToken` so a reviewer can see —
+        and override — what the model deliberately didn't expand.
+        """
         ordered = self._order_tokens(unknown_tokens, skip_known)
-        out: list[Abbreviation] = []
+        result = AbbreviationMiningResult()
         for batch in self._batches(ordered):
             response = self._client.messages.parse(
                 model=self._model,
@@ -152,7 +191,7 @@ class LLMAbbreviationMiner:
             )
             for proposal in response.parsed_output.proposals:
                 if proposal.is_expandable and proposal.expansion.strip():
-                    out.append(
+                    result.expandable.append(
                         Abbreviation(
                             short=proposal.short,
                             expansion=proposal.expansion.strip(),
@@ -162,7 +201,16 @@ class LLMAbbreviationMiner:
                             group=proposal.group.strip(),
                         )
                     )
-        return out
+                else:
+                    result.not_expandable.append(
+                        UnexpandableToken(
+                            short=proposal.short,
+                            rationale=proposal.rationale,
+                            confidence=proposal.confidence,
+                            group=proposal.group.strip(),
+                        )
+                    )
+        return result
 
     # --- Internals --------------------------------------------------------------------
 

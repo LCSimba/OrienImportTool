@@ -20,6 +20,7 @@ from orien_import_tool.review.models import (
     ReviewQueue,
 )
 from orien_import_tool.textnorm.abbreviations import Abbreviation, AbbrevProposer
+from orien_import_tool.textnorm.miner import UnexpandableToken
 
 # --- Mapping reviews -----------------------------------------------------------------
 
@@ -143,6 +144,36 @@ def build_abbreviation_review(abbreviations: Iterable[Abbreviation]) -> ReviewQu
                     "expansion": abbrev.expansion,
                     "rationale": abbrev.rationale,
                     "group": abbrev.group,
+                },
+            )
+        )
+    return queue
+
+
+def build_unexpandable_review(tokens: Iterable[UnexpandableToken]) -> ReviewQueue:
+    """Surface tokens the miner deliberately left unexpanded for SME review.
+
+    These are the product names / equipment codes / proper nouns the model
+    flagged as *not* abbreviations. Accepting confirms "correctly left as-is";
+    correcting (supplying an expansion) rescues a wrongly-skipped abbreviation.
+    Grouped via the same family label as the expandable proposals.
+    """
+    queue = ReviewQueue()
+    for token in tokens:
+        queue.items.append(
+            ReviewItem(
+                item_id=f"unknown:{token.short}",
+                item_type=ReviewItemType.UNKNOWN_TOKEN,
+                summary=f"unknown token '{token.short}' — left unexpanded",
+                detail=token.rationale,
+                primary_proposal="",
+                alternates=(),
+                confidence=token.confidence,
+                proposer=AbbrevProposer.LLM.value,
+                payload={
+                    "short": token.short,
+                    "rationale": token.rationale,
+                    "group": token.group,
                 },
             )
         )

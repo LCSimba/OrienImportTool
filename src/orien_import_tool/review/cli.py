@@ -30,6 +30,7 @@ from orien_import_tool.review.applier import apply_decisions
 from orien_import_tool.review.builders import (
     build_abbreviation_review,
     build_alias_review,
+    build_unexpandable_review,
     build_unified_queue,
 )
 from orien_import_tool.review.exporters import (
@@ -511,20 +512,32 @@ def _mine_abbreviations(args) -> int:
         max_tokens=args.max_tokens,
     )
     # Don't re-propose shorthand already in the store (seed or confirmed).
-    proposed = miner.mine(top_unknowns, skip_known=abbrev_store, context=context)
-    print(f"Got {len(proposed)} expandable abbreviation proposals.", file=sys.stderr)
+    result = miner.mine_all(top_unknowns, skip_known=abbrev_store, context=context)
+    print(
+        f"Got {len(result.expandable)} expandable proposals and "
+        f"{len(result.not_expandable)} tokens left unexpanded.",
+        file=sys.stderr,
+    )
 
     # Stash observed frequency into the rationale so the SME can prioritise.
     enriched = [
         dataclasses.replace(
             a, rationale=f"(seen {unknown_freq.get(a.short, 0)}x) {a.rationale}".strip()
         )
-        for a in proposed
+        for a in result.expandable
     ]
+    # One CSV, two categories: expandable proposals + the tokens we deliberately
+    # left as-is (so the SME can confirm or override the 'not an abbreviation' call).
     queue = build_abbreviation_review(enriched)
+    queue.extend(build_unexpandable_review(result.not_expandable).items)
     if args.csv:
         args.csv.write_text(queue_to_csv(queue), encoding="utf-8")
-        print(f"Wrote {len(queue)} abbreviation review items to {args.csv}", file=sys.stderr)
+        print(
+            f"Wrote {len(queue)} review items "
+            f"({len(enriched)} expandable + {len(result.not_expandable)} unexpandable) "
+            f"to {args.csv}",
+            file=sys.stderr,
+        )
     else:
         sys.stdout.write(queue_to_csv(queue))
     return 0
