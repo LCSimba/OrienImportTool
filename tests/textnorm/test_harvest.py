@@ -8,7 +8,7 @@ wrong, as it did proposing ``bmak -> brake``).
 
 from __future__ import annotations
 
-from orien_import_tool.textnorm import harvest_inline_abbreviations
+from orien_import_tool.textnorm import build_initial_abbreviations, harvest_inline_abbreviations
 from orien_import_tool.textnorm.abbreviations import AbbrevProposer
 
 
@@ -20,7 +20,7 @@ def test_harvests_simple_code_expansion() -> None:
     [a] = harvest_inline_abbreviations(["BMAK - BOILER MAKING"])
     assert a.short == "bmak"
     assert a.expansion == "boiler making"
-    assert a.proposer == AbbrevProposer.RULE
+    assert a.proposer == AbbrevProposer.HARVEST
 
 
 def test_splits_on_pipe_and_harvests_per_segment() -> None:
@@ -59,3 +59,11 @@ def test_dedupes_first_seen_wins() -> None:
 
 def test_ignores_empty_and_dashless_segments() -> None:
     assert harvest_inline_abbreviations(["", "GUARD REPAIRS", "NO COMMS/NETWORK"]) == []
+
+
+def test_harvest_outranks_generic_seed() -> None:
+    """A harvested expansion (operator ground truth) beats a generic RULE seed."""
+    store = build_initial_abbreviations()
+    assert store.expand("inst") == "instrument"  # generic seed
+    store.add_many(harvest_inline_abbreviations(["INST - CONTROL & INSTR"]))
+    assert store.expand("inst") == "control & instr"  # HARVEST tier wins

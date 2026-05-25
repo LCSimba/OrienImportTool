@@ -114,3 +114,30 @@ def test_system_prompt_cached() -> None:
     miner.mine(["splc"])
     system = miner._client.messages.captured_kwargs[0]["system"]
     assert system[0]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_context_is_folded_into_prompt() -> None:
+    """Per-token TokenContext (examples + co-occurring labels) reaches the prompt."""
+    from orien_import_tool.textnorm import TokenContext
+
+    miner = LLMAbbreviationMiner(client=FakeClient(AbbreviationProposalBatch(proposals=[])))
+    miner.mine(
+        ["safeline"],
+        context={
+            "safeline": TokenContext(
+                examples=("SAFE LINE FAULT | TRIP ON SAFELINE FAULT",),
+                cooccurring=("SAFETY - SYSTEM",),
+            )
+        },
+    )
+    user_msg = miner._client.messages.captured_kwargs[0]["messages"][0]["content"]
+    assert "appears alongside: SAFETY - SYSTEM" in user_msg
+    assert "TRIP ON SAFELINE FAULT" in user_msg
+
+
+def test_prompt_without_context_has_no_context_lines() -> None:
+    miner = LLMAbbreviationMiner(client=FakeClient(AbbreviationProposalBatch(proposals=[])))
+    miner.mine(["splc"])
+    user_msg = miner._client.messages.captured_kwargs[0]["messages"][0]["content"]
+    assert "- splc" in user_msg
+    assert "appears alongside" not in user_msg

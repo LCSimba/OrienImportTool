@@ -27,6 +27,12 @@ class DowntimeEvent:
     and mining run against *this*, never the validated columns, which carry
     their own descriptions and must not be "corrected". It defaults to ``""``;
     consumers that want the noisy text fall back to ``free_text or text``.
+
+    ``coded_context`` holds the row's validated/coded labels (category,
+    component description, table description) as distinct strings. These are
+    *not* matched or corrected, but they're high-value disambiguation context
+    when asking an LLM what an unknown token means — an ``espk`` seen on rows
+    labelled "CONTROL & INSTR" reads very differently from one on "BELT".
     """
 
     external_id: str
@@ -37,6 +43,7 @@ class DowntimeEvent:
     end_ts: datetime | None = None
     duration_s: float | None = None
     source_system: str = ""
+    coded_context: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

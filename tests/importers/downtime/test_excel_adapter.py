@@ -85,6 +85,19 @@ def test_free_text_excludes_validated_columns(fixture_path: Path) -> None:
     )
 
 
+def test_coded_context_captures_validated_labels(fixture_path: Path) -> None:
+    """coded_context surfaces the validated columns for LLM disambiguation.
+
+    Notably it captures Availability_Name ('CONTROL & INSTR'), which the
+    composer drops from the matched text entirely.
+    """
+    events = parse_xlsx(fixture_path, "Conveyor")
+    coded = next((e for e in events if "SPLC" in e.text), None)
+    assert coded is not None
+    assert "CONTROL & INSTR" in coded.coded_context  # Availability_Name
+    assert "CONTROL - SYSTEM" in coded.coded_context  # Table Desc
+
+
 def test_skips_rows_without_text(fixture_path: Path) -> None:
     """Rows where every text column is blank should not become events."""
     events = parse_xlsx(fixture_path, "Conveyor")

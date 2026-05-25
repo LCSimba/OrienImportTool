@@ -26,6 +26,7 @@ from orien_import_tool.textnorm.miner import (
     AbbreviationProposal,
     AbbreviationProposalBatch,
     LLMAbbreviationMiner,
+    TokenContext,
 )
 from orien_import_tool.textnorm.normalizer import (
     Correction,
@@ -46,6 +47,7 @@ __all__ = [
     "PySpellEngine",
     "SpellEngine",
     "TextNormalizer",
+    "TokenContext",
     "build_domain_dictionary",
     "build_initial_abbreviations",
     "harvest_inline_abbreviations",

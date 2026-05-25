@@ -67,6 +67,14 @@ _DURATION_HOURS_COLUMNS: tuple[str, ...] = (
 
 _CATEGORY_COLUMNS: tuple[str, ...] = ("Availability_Name",)
 
+# Validated/coded columns surfaced as ``coded_context`` — disambiguation
+# context for an LLM (not matched, not corrected). Most-specific last.
+_CONTEXT_COLUMNS: tuple[str, ...] = (
+    "Availability_Name",
+    "ComponentCodeDescription",
+    "Table Desc",
+)
+
 
 class DowntimeExcelError(ValueError):
     """Raised when an Excel downtime export fails to parse."""
@@ -104,6 +112,7 @@ def parse_xlsx(
 
     text_cols = [c for c in _TEXT_COLUMNS if c in col_idx]
     free_text_cols = [c for c in _FREE_TEXT_COLUMNS if c in col_idx]
+    context_cols = [c for c in _CONTEXT_COLUMNS if c in col_idx]
     asset_cols = [c for c in _ASSET_COLUMNS if c in col_idx]
     if not text_cols:
         raise DowntimeExcelError(
@@ -134,6 +143,7 @@ def parse_xlsx(
                 asset_ref=asset_ref,
                 text=text,
                 free_text=_compose_text(row, col_idx, free_text_cols),
+                coded_context=_distinct_values(row, col_idx, context_cols),
                 start_ts=_extract_datetime(row, col_idx, date_col),
                 duration_s=_extract_duration_seconds(row, col_idx, duration_col),
                 source_system=source_system,
@@ -175,6 +185,29 @@ def _compose_text(
         seen.add(key)
         parts.append(text)
     return " | ".join(parts)
+
+
+def _distinct_values(
+    row: tuple,
+    col_idx: dict[str, int],
+    cols: list[str],
+) -> tuple[str, ...]:
+    """Distinct, non-blank values across ``cols`` (casefold-deduped, in order)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for col in cols:
+        value = row[col_idx[col]]
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(text)
+    return tuple(out)
 
 
 def _first_nonblank(

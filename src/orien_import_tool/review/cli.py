@@ -352,12 +352,7 @@ def _mine_aliases(args) -> int:
     if not getattr(args, "no_normalize", False):
         # Harvest operator-written 'code - expansion' shorthand into the store
         # before building the normaliser (free, deterministic, no LLM).
-        harvested = [
-            a
-            for a in harvest_inline_abbreviations(e.free_text for e in events)
-            if a.short not in abbrev_store
-        ]
-        abbrev_store.add_many(harvested)
+        abbrev_store.add_many(harvest_inline_abbreviations(e.free_text for e in events))
         normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
 
     classifier = AliasClassifier(
@@ -447,9 +442,13 @@ def _build_normalizer(equipment, iso_ref, abbrev_store):
 
 def _mine_abbreviations(args) -> int:
     import dataclasses
-    from collections import Counter
+    from collections import Counter, defaultdict
 
-    from orien_import_tool.textnorm import LLMAbbreviationMiner, harvest_inline_abbreviations
+    from orien_import_tool.textnorm import (
+        LLMAbbreviationMiner,
+        TokenContext,
+        harvest_inline_abbreviations,
+    )
 
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
@@ -460,14 +459,10 @@ def _mine_abbreviations(args) -> int:
         events = events[: args.max_events]
 
     # Free, deterministic first pass: harvest 'CODE - EXPANSION' the operator
-    # wrote inline (e.g. 'BMAK - BOILER MAKING'). Add the genuinely new ones so
-    # the normaliser expands them and the LLM never re-proposes (or mis-guesses)
-    # them. Shorts already known (seed/persisted) keep their existing expansion.
-    harvested = [
-        a
-        for a in harvest_inline_abbreviations(e.free_text for e in events)
-        if a.short not in abbrev_store
-    ]
+    # wrote inline (e.g. 'BMAK - BOILER MAKING'). Tagged HARVEST, so they expand
+    # in the normaliser and outrank generic seeds — and the LLM never has to
+    # re-propose (or mis-guess) them.
+    harvested = harvest_inline_abbreviations(e.free_text for e in events)
     abbrev_store.add_many(harvested)
     if harvested:
         print(
@@ -479,13 +474,28 @@ def _mine_abbreviations(args) -> int:
     normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
 
     # Mining targets operator free-text only — the validated/coded columns
-    # (ComponentCode, Table Desc, ...) are not spelling candidates.
+    # (ComponentCode, Table Desc, ...) are not spelling candidates. While
+    # scanning, gather per-token evidence (a few example usages + the validated
+    # labels each token co-occurs with) so the LLM disambiguates from context.
     unknown_freq: Counter[str] = Counter()
+    examples: dict[str, list[str]] = defaultdict(list)
+    cooccurring: dict[str, set[str]] = defaultdict(set)
     for event in events:
-        for token in normalizer.normalize(event.free_text or event.text).unknown_tokens:
+        source = event.free_text or event.text
+        for token in normalizer.normalize(source).unknown_tokens:
             unknown_freq[token] += 1
+            if len(examples[token]) < 3 and source not in examples[token]:
+                examples[token].append(source[:120])
+            cooccurring[token].update(event.coded_context)
 
     top_unknowns = Counter(dict(unknown_freq.most_common(args.max_unknowns)))
+    context = {
+        token: TokenContext(
+            examples=tuple(examples[token]),
+            cooccurring=tuple(sorted(cooccurring[token])[:6]),
+        )
+        for token in top_unknowns
+    }
     print(
         f"Found {len(unknown_freq)} distinct unknown tokens; "
         f"sending top {len(top_unknowns)} to {args.llm_url} / {args.llm_model}...",
@@ -501,7 +511,7 @@ def _mine_abbreviations(args) -> int:
         max_tokens=args.max_tokens,
     )
     # Don't re-propose shorthand already in the store (seed or confirmed).
-    proposed = miner.mine(top_unknowns, skip_known=abbrev_store)
+    proposed = miner.mine(top_unknowns, skip_known=abbrev_store, context=context)
     print(f"Got {len(proposed)} expandable abbreviation proposals.", file=sys.stderr)
 
     # Stash observed frequency into the rationale so the SME can prioritise.

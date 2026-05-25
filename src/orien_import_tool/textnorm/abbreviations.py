@@ -23,6 +23,7 @@ from enum import StrEnum
 
 class AbbrevProposer(StrEnum):
     RULE = "rule"
+    HARVEST = "harvest"
     LLM = "llm"
     SME = "sme"
 
@@ -121,7 +122,15 @@ class AbbreviationStore:
         matches = self._by_short.get(token.casefold())
         if not matches:
             return None
-        order = {AbbrevProposer.SME: 0, AbbrevProposer.LLM: 1, AbbrevProposer.RULE: 2}
+        # SME confirmation wins; then expansions the operator wrote verbatim in
+        # the data (HARVEST) — dataset ground truth outranks an LLM guess and a
+        # generic hand seed; LLM proposals next; generic RULE seeds last.
+        order = {
+            AbbrevProposer.SME: 0,
+            AbbrevProposer.HARVEST: 1,
+            AbbrevProposer.LLM: 2,
+            AbbrevProposer.RULE: 3,
+        }
         best = min(matches, key=lambda a: order[a.proposer])
         return best.expansion
 
@@ -174,9 +183,9 @@ def harvest_inline_abbreviations(texts: Iterable[str]) -> list[Abbreviation]:
 
     Segments are split on ``|`` (the composer's join). A segment qualifies
     only when it is *exactly* ``<short> - <expansion>``; the expansion must be
-    longer than the short token and at most six words. Tagged ``proposer=RULE``
-    (deterministic, re-derivable from the data each run); callers typically
-    skip shorts already present in the store so generic seeds win.
+    longer than the short token and at most six words. Tagged
+    ``proposer=HARVEST`` — dataset ground truth (the operator wrote it), so it
+    outranks generic RULE seeds and even LLM guesses, but not SME confirmation.
     """
     out: dict[str, Abbreviation] = {}
     for text in texts:
@@ -197,7 +206,7 @@ def harvest_inline_abbreviations(texts: Iterable[str]) -> list[Abbreviation]:
                 Abbreviation(
                     short=short,
                     expansion=expansion,
-                    proposer=AbbrevProposer.RULE,
+                    proposer=AbbrevProposer.HARVEST,
                     rationale="Harvested inline 'code - expansion' from operator text",
                 ),
             )
