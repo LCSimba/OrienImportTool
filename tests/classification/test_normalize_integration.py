@@ -154,3 +154,19 @@ def test_normalize_event_collects_unknown_tokens(equipment: Equipment) -> None:
     _, result = normalize_event(_event("simocode glitch"), normalizer)
     # 'simocode'/'glitch' aren't domain terms or known words -> unknown.
     assert result.unknown_tokens
+
+
+def test_normalize_event_only_touches_free_text(equipment: Equipment) -> None:
+    """When free_text is set, the validated/coded columns are not normalised."""
+    normalizer = _normalizer(equipment)
+    event = DowntimeEvent(
+        external_id="e-1",
+        asset_ref="conveyor",
+        text="beraing problem | CONTROL - SYSTEM | SPLC",
+        free_text="beraing problem",
+    )
+    cleaned, result = normalize_event(event, normalizer)
+
+    assert result.original_text == "beraing problem"  # sourced from free_text
+    assert "bearing" in cleaned.text  # operator typo fixed
+    assert "SPLC" not in cleaned.text  # coded tail never reached the speller

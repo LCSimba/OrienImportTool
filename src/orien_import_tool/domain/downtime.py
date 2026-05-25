@@ -19,11 +19,20 @@ class DowntimeEvent:
     rows without timestamps, especially aggregated category tables. The
     classifier doesn't use timestamps for matching, so an undated record
     is still useful.
+
+    ``text`` is the full composed record (free-text *and* validated/coded
+    columns) — the classifier matches against it because the coded
+    descriptions are useful signal. ``free_text`` is the operator-typed
+    subset only (the CMMS TextLine fields); spelling/abbreviation cleanup
+    and mining run against *this*, never the validated columns, which carry
+    their own descriptions and must not be "corrected". It defaults to ``""``;
+    consumers that want the noisy text fall back to ``free_text or text``.
     """
 
     external_id: str
     asset_ref: str
     text: str
+    free_text: str = ""
     start_ts: datetime | None = None
     end_ts: datetime | None = None
     duration_s: float | None = None

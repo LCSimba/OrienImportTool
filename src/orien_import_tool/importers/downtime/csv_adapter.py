@@ -118,6 +118,7 @@ def _row_to_event(raw: dict[str, str], cols: dict[str, str]) -> DowntimeEvent:
         asset_ref=asset_ref,
         start_ts=start_ts,
         text=text,
+        free_text=text,  # CSV 'text' column is operator free-text in full
         end_ts=end_ts,
         duration_s=duration_s,
         source_system=source_system,

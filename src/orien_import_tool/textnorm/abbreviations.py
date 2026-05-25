@@ -14,7 +14,9 @@ store.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -147,3 +149,56 @@ def build_initial_abbreviations() -> AbbreviationStore:
             )
         )
     return store
+
+
+# A pipe-delimited segment that is exactly "<short> - <expansion>": a single
+# short token (2-8 chars, no spaces) followed by ` - ` and an expansion phrase.
+# The single-token-on-the-left rule is what rejects narrative dashes such as
+# "CONVEYOR STOP START - BLOCKED CHUTE" (the left side has spaces).
+_INLINE_EXPANSION_RE = re.compile(
+    r"^\s*([A-Za-z][A-Za-z0-9/]{1,7})\s*-\s*([A-Za-z][A-Za-z0-9 &/.()'-]*?)\s*$"
+)
+
+
+def harvest_inline_abbreviations(texts: Iterable[str]) -> list[Abbreviation]:
+    """Harvest ``CODE - EXPANSION`` shorthand operators wrote inline.
+
+    Operators frequently spell a code out in the same free-text cell, e.g.
+    ``BMAK - BOILER MAKING`` or ``INST - CONTROL & INSTR``. Each such segment
+    is a free, dataset-specific abbreviation — the operator already supplied
+    the expansion — so we harvest them deterministically (no LLM call). Feed
+    the results into the abbreviation store *before* mining so the normaliser
+    expands them and the LLM miner never wastes a guess (and can't get it
+    wrong, as Claude did proposing ``bmak -> brake`` when the data says
+    boiler making).
+
+    Segments are split on ``|`` (the composer's join). A segment qualifies
+    only when it is *exactly* ``<short> - <expansion>``; the expansion must be
+    longer than the short token and at most six words. Tagged ``proposer=RULE``
+    (deterministic, re-derivable from the data each run); callers typically
+    skip shorts already present in the store so generic seeds win.
+    """
+    out: dict[str, Abbreviation] = {}
+    for text in texts:
+        if not text:
+            continue
+        for segment in text.split("|"):
+            match = _INLINE_EXPANSION_RE.match(segment)
+            if match is None:
+                continue
+            short = match.group(1).casefold()
+            expansion = " ".join(match.group(2).split()).casefold()
+            if not expansion or short == expansion:
+                continue
+            if len(expansion) <= len(short) or len(expansion.split()) > 6:
+                continue
+            out.setdefault(
+                short,
+                Abbreviation(
+                    short=short,
+                    expansion=expansion,
+                    proposer=AbbrevProposer.RULE,
+                    rationale="Harvested inline 'code - expansion' from operator text",
+                ),
+            )
+    return list(out.values())

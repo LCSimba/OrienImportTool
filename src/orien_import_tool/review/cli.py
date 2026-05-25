@@ -340,14 +340,24 @@ def _apply(args) -> int:
 
 def _mine_aliases(args) -> int:
     from orien_import_tool.aliases import LLMAliasMiner
-    from orien_import_tool.textnorm import normalize_events
+    from orien_import_tool.textnorm import harvest_inline_abbreviations, normalize_events
 
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
     alias_store, abbrev_store = _knowledge_stores(args, equipment, iso_ref)
 
+    events = parse_xlsx(args.downtime, args.downtime_sheet)
+
     normalizer = None
     if not getattr(args, "no_normalize", False):
+        # Harvest operator-written 'code - expansion' shorthand into the store
+        # before building the normaliser (free, deterministic, no LLM).
+        harvested = [
+            a
+            for a in harvest_inline_abbreviations(e.free_text for e in events)
+            if a.short not in abbrev_store
+        ]
+        abbrev_store.add_many(harvested)
         normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
 
     classifier = AliasClassifier(
@@ -356,14 +366,14 @@ def _mine_aliases(args) -> int:
         normalizer=normalizer,
     )
 
-    events = parse_xlsx(args.downtime, args.downtime_sheet)
     low_conf = _select_low_confidence_events(
         events,
         classifier,
         threshold=args.score_threshold,
         cap=args.max_events,
     )
-    # Send the LLM cleaned text — normalisation already fixed typos/abbreviations.
+    # Send the LLM cleaned operator free-text — normalisation fixed typos and
+    # expanded abbreviations; the validated/coded columns are dropped here.
     if normalizer is not None and low_conf:
         low_conf, _ = normalize_events(low_conf, normalizer)
     print(
@@ -439,19 +449,40 @@ def _mine_abbreviations(args) -> int:
     import dataclasses
     from collections import Counter
 
-    from orien_import_tool.textnorm import LLMAbbreviationMiner
+    from orien_import_tool.textnorm import LLMAbbreviationMiner, harvest_inline_abbreviations
 
     equipment = normalize(parse_workbook(args.orien))
     iso_ref = load_all(args.iso_dir)
     abbrev_store = _build_abbreviation_store(args)  # seed + any persisted (feedback loop)
-    normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
 
     events = parse_xlsx(args.downtime, args.downtime_sheet)
     if args.max_events:
         events = events[: args.max_events]
+
+    # Free, deterministic first pass: harvest 'CODE - EXPANSION' the operator
+    # wrote inline (e.g. 'BMAK - BOILER MAKING'). Add the genuinely new ones so
+    # the normaliser expands them and the LLM never re-proposes (or mis-guesses)
+    # them. Shorts already known (seed/persisted) keep their existing expansion.
+    harvested = [
+        a
+        for a in harvest_inline_abbreviations(e.free_text for e in events)
+        if a.short not in abbrev_store
+    ]
+    abbrev_store.add_many(harvested)
+    if harvested:
+        print(
+            f"Harvested {len(harvested)} inline 'code - expansion' abbreviations "
+            "from operator text (no LLM).",
+            file=sys.stderr,
+        )
+
+    normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
+
+    # Mining targets operator free-text only — the validated/coded columns
+    # (ComponentCode, Table Desc, ...) are not spelling candidates.
     unknown_freq: Counter[str] = Counter()
     for event in events:
-        for token in normalizer.normalize(event.text).unknown_tokens:
+        for token in normalizer.normalize(event.free_text or event.text).unknown_tokens:
             unknown_freq[token] += 1
 
     top_unknowns = Counter(dict(unknown_freq.most_common(args.max_unknowns)))

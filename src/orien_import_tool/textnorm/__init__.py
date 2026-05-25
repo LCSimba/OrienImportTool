@@ -19,6 +19,7 @@ Pipeline position: ``normalize -> alias-expand -> classify``.
 from orien_import_tool.textnorm.abbreviations import (
     AbbreviationStore,
     build_initial_abbreviations,
+    harvest_inline_abbreviations,
 )
 from orien_import_tool.textnorm.dictionary import DomainDictionary, build_domain_dictionary
 from orien_import_tool.textnorm.miner import (
@@ -47,6 +48,7 @@ __all__ = [
     "TextNormalizer",
     "build_domain_dictionary",
     "build_initial_abbreviations",
+    "harvest_inline_abbreviations",
     "normalize_event",
     "normalize_events",
 ]

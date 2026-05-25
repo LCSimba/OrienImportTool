@@ -10,6 +10,13 @@ The cleaned event keeps the same ``external_id`` so downstream
 classifications still link back to it; ``asset_ref`` is left untouched
 (it's a tag/code, not prose). The original text isn't lost — it's carried on
 the returned :class:`NormalizationResult.original_text`.
+
+Normalisation operates on the operator-typed ``free_text`` (falling back to
+``text`` when an event carries no free-text split, e.g. CSV or hand-built
+records). The validated/coded columns are never run through the speller — they
+carry their own descriptions. The cleaned result is written to *both* ``text``
+and ``free_text`` so downstream miners that read ``text`` see only the cleaned
+operator vocabulary.
 """
 
 from __future__ import annotations
@@ -26,8 +33,8 @@ def normalize_event(
     normalizer: TextNormalizer,
 ) -> tuple[DowntimeEvent, NormalizationResult]:
     """Return a cleaned copy of ``event`` plus the normalisation result."""
-    result = normalizer.normalize(event.text)
-    cleaned = dataclasses.replace(event, text=result.cleaned_text)
+    result = normalizer.normalize(event.free_text or event.text)
+    cleaned = dataclasses.replace(event, text=result.cleaned_text, free_text=result.cleaned_text)
     return cleaned, result
 
 

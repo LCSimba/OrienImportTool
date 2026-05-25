@@ -64,6 +64,27 @@ def test_text_composition_includes_textline3(fixture_path: Path) -> None:
         assert len(parts) >= 2
 
 
+def test_free_text_excludes_validated_columns(fixture_path: Path) -> None:
+    """free_text carries only TextLine1/2/3 — never ComponentCode / Table Desc.
+
+    Those validated columns leak coded tokens (SPLC, 'CONTROL - SYSTEM') into
+    the full ``text``; mining/cleanup must not see them.
+    """
+    events = parse_xlsx(fixture_path, "Conveyor")
+    coded = next((e for e in events if "SPLC" in e.text), None)
+    assert coded is not None, "expected at least one SPLC-tagged row in the fixture"
+
+    # Full text carries the validated code; free_text does not.
+    assert "SPLC" in coded.text
+    assert "SPLC" not in coded.free_text
+    assert "CONTROL - SYSTEM" not in coded.free_text
+    # But the operator free-text content is preserved.
+    assert coded.free_text
+    assert coded.free_text in coded.text or all(
+        part.strip() in coded.text for part in coded.free_text.split(" | ")
+    )
+
+
 def test_skips_rows_without_text(fixture_path: Path) -> None:
     """Rows where every text column is blank should not become events."""
     events = parse_xlsx(fixture_path, "Conveyor")

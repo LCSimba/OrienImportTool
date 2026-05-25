@@ -25,8 +25,10 @@ import openpyxl
 
 from orien_import_tool.domain.downtime import DowntimeEvent
 
-# Columns we can compose into the free-text field, ordered by descending
-# specificity. Empty values are skipped at compose time.
+# Columns composed into the full ``text`` field (free-text *and* validated
+# columns), ordered by descending specificity. Empty values are skipped at
+# compose time. The classifier matches against this — the coded descriptions
+# (Table Desc, ComponentCodeDescription) are useful signal.
 _TEXT_COLUMNS: tuple[str, ...] = (
     "TextLine3",
     "TextLine2",
@@ -34,6 +36,16 @@ _TEXT_COLUMNS: tuple[str, ...] = (
     "Table Desc",
     "UDC Description",
     "ComponentCodeDescription",
+)
+
+# The only operator-typed, non-validated columns. Spelling/abbreviation
+# cleanup and mining run against *these alone* — the other columns are
+# validated codes (ComponentCode, Table Desc) and carry their own
+# descriptions, so "correcting" them would be wrong.
+_FREE_TEXT_COLUMNS: tuple[str, ...] = (
+    "TextLine1",
+    "TextLine2",
+    "TextLine3",
 )
 
 _ASSET_COLUMNS: tuple[str, ...] = (
@@ -91,6 +103,7 @@ def parse_xlsx(
     col_idx = {h: i for i, h in enumerate(headers) if h}
 
     text_cols = [c for c in _TEXT_COLUMNS if c in col_idx]
+    free_text_cols = [c for c in _FREE_TEXT_COLUMNS if c in col_idx]
     asset_cols = [c for c in _ASSET_COLUMNS if c in col_idx]
     if not text_cols:
         raise DowntimeExcelError(
@@ -120,6 +133,7 @@ def parse_xlsx(
                 external_id=f"{sheet_name}:{row_no}",
                 asset_ref=asset_ref,
                 text=text,
+                free_text=_compose_text(row, col_idx, free_text_cols),
                 start_ts=_extract_datetime(row, col_idx, date_col),
                 duration_s=_extract_duration_seconds(row, col_idx, duration_col),
                 source_system=source_system,
