@@ -38,6 +38,7 @@ from orien_import_tool.persistence.models import (
     DowntimeEventRow,
     EquipmentRow,
     Iso14224MappingRow,
+    NonExpandableTokenRow,
 )
 from orien_import_tool.textnorm.abbreviations import (
     Abbreviation,
@@ -235,6 +236,26 @@ class AbbreviationRepository:
         store = build_initial_abbreviations() if seeded else AbbreviationStore()
         store.add_many(self.all())
         return store
+
+
+class NonExpandableTokenRepository:
+    """Tokens an SME confirmed are not abbreviations — load them as a skip set.
+
+    The abbreviation miner consults this set so confirmed product/equipment
+    names (``vuma``, ``scada``, ...) stop re-surfacing as unknowns each run.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, token: str, *, reason: str = "", sme_user: str = "") -> None:
+        key = token.strip().casefold()
+        if not key or self._session.get(NonExpandableTokenRow, key) is not None:
+            return
+        self._session.add(NonExpandableTokenRow(token=key, reason=reason, sme_user=sme_user))
+
+    def tokens(self) -> set[str]:
+        return set(self._session.execute(select(NonExpandableTokenRow.token)).scalars().all())
 
 
 # --- DowntimeRepository -------------------------------------------------------------

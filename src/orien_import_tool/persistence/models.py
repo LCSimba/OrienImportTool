@@ -170,6 +170,21 @@ class AbbreviationRow(Base):
     __table_args__ = (Index("ix_abbreviations_short", "short"),)
 
 
+class NonExpandableTokenRow(Base):
+    """A token an SME confirmed is *not* an abbreviation (product/equipment name).
+
+    Recorded so the abbreviation miner stops re-surfacing it on every run.
+    Keyed by the lowercased token; ``reason`` carries the original rationale.
+    """
+
+    __tablename__ = "non_expandable_tokens"
+
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    sme_user: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class DowntimeEventRow(Base):
     __tablename__ = "downtime_events"
 

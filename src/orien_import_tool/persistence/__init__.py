@@ -20,6 +20,7 @@ from orien_import_tool.persistence.models import (
     EquipmentRow,
     FailureModeRow,
     Iso14224MappingRow,
+    NonExpandableTokenRow,
 )
 from orien_import_tool.persistence.repositories import (
     AbbreviationRepository,
@@ -28,6 +29,7 @@ from orien_import_tool.persistence.repositories import (
     DowntimeRepository,
     EquipmentRepository,
     MappingRepository,
+    NonExpandableTokenRepository,
 )
 from orien_import_tool.persistence.session import (
     init_db,
@@ -52,6 +54,8 @@ __all__ = [
     "FailureModeRow",
     "Iso14224MappingRow",
     "MappingRepository",
+    "NonExpandableTokenRepository",
+    "NonExpandableTokenRow",
     "init_db",
     "make_engine",
     "make_session_factory",

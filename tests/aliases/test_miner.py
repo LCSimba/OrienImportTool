@@ -139,3 +139,32 @@ def test_empty_input_no_api_calls(ref) -> None:
     aliases = miner.mine([])
     assert aliases == []
     assert miner._client.messages.captured_kwargs == []
+
+
+def test_mine_dedupes_repeated_proposals(ref) -> None:
+    """Identical alias->canonical mappings collapse (keep highest conf); distinct ones survive."""
+    canned = AliasProposalBatch(
+        proposals=[
+            AliasProposal(
+                alias_text="faulty", canonical_tokens=["failure"], confidence=0.70, rationale="a"
+            ),
+            AliasProposal(
+                alias_text="faulty", canonical_tokens=["failure"], confidence=0.85, rationale="b"
+            ),
+            AliasProposal(
+                alias_text="detector", canonical_tokens=["blockage"], confidence=0.60, rationale="c"
+            ),
+        ]
+    )
+    aliases = LLMAliasMiner(ref, client=FakeAnthropicClient(canned)).mine([_event("x")])
+    by = {(a.alias_text, a.canonical_tokens): a for a in aliases}
+    assert len(aliases) == 2
+    assert by[("faulty", ("failure",))].confidence == 0.85  # higher-conf dup kept
+    assert ("detector", ("blockage",)) in by  # distinct mapping survives
+
+
+def test_prompt_forbids_generic_failure_overmapping(ref) -> None:
+    miner = LLMAliasMiner(ref, client=FakeAnthropicClient(AliasProposalBatch(proposals=[])))
+    miner.mine([_event("x")])
+    text = miner._client.messages.captured_kwargs[0]["system"][0]["text"]
+    assert "not an alias for a failure mode" in text

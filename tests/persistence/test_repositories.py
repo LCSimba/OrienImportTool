@@ -394,3 +394,17 @@ def test_full_pipeline_persists_to_db(
     assert EquipmentRepository(session).get("eq-1") is not None
     assert AliasRepository(session).to_alias_store().expand_token("tripped") == {"stoppage"}
     assert DowntimeRepository(session).list_events() != []
+
+
+def test_non_expandable_token_repository(session: Session) -> None:
+    """Confirmed non-expandable tokens round-trip as a casefolded, deduped set."""
+    from orien_import_tool.persistence import NonExpandableTokenRepository
+
+    repo = NonExpandableTokenRepository(session)
+    repo.add("VUMA", reason="conveyor name", sme_user="alice")
+    repo.add("vuma")  # idempotent — same casefolded token
+    repo.add("scada")
+    repo.add("   ")  # blank ignored
+    session.commit()
+
+    assert repo.tokens() == {"vuma", "scada"}

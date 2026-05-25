@@ -59,6 +59,7 @@ if TYPE_CHECKING:
         AuditLogRepository,
         DowntimeRepository,
         MappingRepository,
+        NonExpandableTokenRepository,
     )
     from orien_import_tool.review.models import ReviewDecision
 
@@ -78,6 +79,7 @@ class ApplyResult:
     classifications_recorded: int = 0
     abbreviations_added: int = 0
     abbreviations_rejected: int = 0
+    non_expandable_confirmed: int = 0
     audit_entries: int = 0
     skipped: list[str] = field(default_factory=list)
 
@@ -92,6 +94,7 @@ def apply_decisions(
     downtime_repository: DowntimeRepository | None = None,
     abbreviation_store: AbbreviationStore | None = None,
     abbreviation_repository: AbbreviationRepository | None = None,
+    non_expandable_repository: NonExpandableTokenRepository | None = None,
     audit_log_repository: AuditLogRepository | None = None,
     sme_user: str = "",
 ) -> ApplyResult:
@@ -113,7 +116,13 @@ def apply_decisions(
             _apply_abbreviation(decision, item, abbreviation_store, abbreviation_repository, result)
         elif item.item_type == ReviewItemType.UNKNOWN_TOKEN:
             _apply_unknown_token(
-                decision, item, abbreviation_store, abbreviation_repository, result
+                decision,
+                item,
+                abbreviation_store,
+                abbreviation_repository,
+                non_expandable_repository,
+                sme_user,
+                result,
             )
 
         if audit_log_repository is not None:
@@ -213,20 +222,35 @@ def _apply_unknown_token(
     item: ReviewItem,
     abbreviation_store: AbbreviationStore | None,
     abbreviation_repository: AbbreviationRepository | None,
+    non_expandable_repository: NonExpandableTokenRepository | None,
+    sme_user: str,
     result: ApplyResult,
 ) -> None:
-    """SME override of a token the miner left unexpanded.
+    """SME ruling on a token the miner left unexpanded.
 
-    Only CORRECTED (with a supplied expansion) does anything — it rescues the
-    token as an SME abbreviation. ACCEPTED ("correctly left as-is") and
-    REJECTED write nothing; the audit-log entry is the record.
+    * CORRECTED (with an expansion) rescues it as an SME abbreviation.
+    * ACCEPTED ("correctly left as-is") records it in the non-expandable store
+      so future mining stops re-surfacing it.
+    * REJECTED writes nothing; the audit-log entry is the record.
     """
+    short = str(item.payload.get("short", ""))
+
+    if decision.verdict == ReviewVerdict.ACCEPTED:
+        if not short or non_expandable_repository is None:
+            return  # no suppression store wired — audit entry is the record
+        non_expandable_repository.add(
+            short,
+            reason=str(item.payload.get("rationale", "")),
+            sme_user=sme_user or decision.sme_user,
+        )
+        result.non_expandable_confirmed += 1
+        return
+
     if decision.verdict != ReviewVerdict.CORRECTED or not decision.chosen_alternative:
         return
     if abbreviation_store is None and abbreviation_repository is None:
         result.skipped.append(item.item_id)
         return
-    short = str(item.payload.get("short", ""))
     if not short:
         result.skipped.append(item.item_id)
         return

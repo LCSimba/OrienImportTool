@@ -295,6 +295,7 @@ def _apply(args) -> int:
             AuditLogRepository,
             DowntimeRepository,
             MappingRepository,
+            NonExpandableTokenRepository,
             init_db,
             make_engine,
             make_session_factory,
@@ -311,6 +312,7 @@ def _apply(args) -> int:
                 mapping_repository=MappingRepository(session),
                 downtime_repository=DowntimeRepository(session),
                 abbreviation_repository=AbbreviationRepository(session),
+                non_expandable_repository=NonExpandableTokenRepository(session),
                 audit_log_repository=AuditLogRepository(session),
                 sme_user=args.sme_user,
             )
@@ -330,6 +332,7 @@ def _apply(args) -> int:
         f"Applied {len(decisions)} decisions: "
         f"+{result.aliases_added} aliases (-{result.aliases_rejected}), "
         f"+{result.abbreviations_added} abbreviations (-{result.abbreviations_rejected}), "
+        f"{result.non_expandable_confirmed} non-expandable confirmed, "
         f"{result.mappings_recorded} mappings, "
         f"{result.classifications_recorded} classifications, "
         f"{result.audit_entries} audit entries, "
@@ -473,6 +476,9 @@ def _mine_abbreviations(args) -> int:
         )
 
     normalizer = _build_normalizer(equipment, iso_ref, abbrev_store)
+    # Tokens an SME already confirmed are not abbreviations — skip them so they
+    # don't re-surface every run (the suppression feedback loop).
+    suppressed = _load_suppressed_tokens(args)
 
     # Mining targets operator free-text only — the validated/coded columns
     # (ComponentCode, Table Desc, ...) are not spelling candidates. While
@@ -484,6 +490,8 @@ def _mine_abbreviations(args) -> int:
     for event in events:
         source = event.free_text or event.text
         for token in normalizer.normalize(source).unknown_tokens:
+            if token in suppressed:
+                continue
             unknown_freq[token] += 1
             if len(examples[token]) < 3 and source not in examples[token]:
                 examples[token].append(source[:120])
@@ -569,6 +577,25 @@ def _build_abbreviation_store(args):
     factory = make_session_factory(engine)
     with factory() as session:
         return AbbreviationRepository(session).to_store(seeded=True)
+
+
+def _load_suppressed_tokens(args) -> set[str]:
+    """SME-confirmed non-expandable tokens from the DB (empty without --db-url)."""
+    db_url = getattr(args, "db_url", "")
+    if not db_url:
+        return set()
+
+    from orien_import_tool.persistence import (
+        NonExpandableTokenRepository,
+        init_db,
+        make_engine,
+        make_session_factory,
+    )
+
+    engine = make_engine(db_url)
+    init_db(engine)
+    with make_session_factory(engine)() as session:
+        return NonExpandableTokenRepository(session).tokens()
 
 
 def _select_low_confidence_events(

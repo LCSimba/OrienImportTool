@@ -248,3 +248,19 @@ def test_accepted_unknown_token_writes_nothing() -> None:
     result = apply_decisions([decision], queue, abbreviation_store=store)
     assert result.abbreviations_added == 0
     assert store.expand("vuma") is None
+
+
+def test_accepted_unknown_token_persists_to_suppression_store(session: Session) -> None:
+    """Accepting 'leave as-is' records the token so future mining skips it."""
+    from orien_import_tool.persistence import NonExpandableTokenRepository
+    from orien_import_tool.review import build_unexpandable_review
+    from orien_import_tool.textnorm import UnexpandableToken
+
+    queue = build_unexpandable_review([UnexpandableToken("vuma", rationale="conveyor name")])
+    repo = NonExpandableTokenRepository(session)
+    decision = ReviewDecision(item_id=queue.items[0].item_id, verdict=ReviewVerdict.ACCEPTED)
+    result = apply_decisions([decision], queue, non_expandable_repository=repo, sme_user="alice")
+    session.commit()
+
+    assert result.non_expandable_confirmed == 1
+    assert "vuma" in repo.tokens()

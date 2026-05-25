@@ -114,7 +114,7 @@ class LLMAliasMiner:
                         rationale=proposal.rationale,
                     )
                 )
-        return out
+        return _dedupe(out)
 
     # --- Prompt construction ----------------------------------------------------
 
@@ -124,6 +124,7 @@ class LLMAliasMiner:
             "",
             "Only propose ``canonical_tokens`` from the FMEA vocabulary catalog below — the classifier will only use tokens it already knows.",
             "If an operator term has no clear FMEA equivalent, omit it.",
+            "Map a term ONLY when the term ITSELF denotes a failure/fault/mechanism (e.g. 'tripped'->stoppage, 'snapped'->fracture). Do NOT map component names, equipment, sensors, control gear, or action words (e.g. 'plc', 'detector', 'communications', 'manually', 'programming') to a generic 'failure'/'failed' just because they appear in a fault event — omit them instead. A component is not an alias for a failure mode.",
             "Lowercase the operator term. Strip punctuation. Single-word terms preferred; multi-word phrases acceptable when the meaning is collocated.",
             "",
             "## Canonical FMEA verb vocabulary (use these as canonical_tokens)",
@@ -179,3 +180,24 @@ class LLMAliasMiner:
 
     def _batches(self, events: list[DowntimeEvent]) -> list[list[DowntimeEvent]]:
         return [events[i : i + self._batch_size] for i in range(0, len(events), self._batch_size)]
+
+
+def _dedupe(aliases: list[Alias]) -> list[Alias]:
+    """Collapse duplicate proposals, keeping the highest-confidence one.
+
+    Low-confidence events repeat across the corpus, so the LLM emits the same
+    ``alias_text -> canonical_tokens`` mapping many times (differing only in
+    rationale/iso_hint). Keyed on (alias_text, canonical_tokens) so genuinely
+    distinct mappings for one term (``detector -> failure`` vs
+    ``detector -> blockage``) both survive.
+    """
+    best: dict[tuple[str, tuple[str, ...]], Alias] = {}
+    for alias in aliases:
+        key = (
+            alias.alias_text.casefold(),
+            tuple(sorted(t.casefold() for t in alias.canonical_tokens)),
+        )
+        current = best.get(key)
+        if current is None or alias.confidence > current.confidence:
+            best[key] = alias
+    return list(best.values())
