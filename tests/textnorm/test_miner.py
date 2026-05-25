@@ -66,6 +66,24 @@ def test_mine_returns_expandable_only() -> None:
     assert result[0].proposer == AbbrevProposer.LLM
 
 
+def test_group_label_carried_to_abbreviation() -> None:
+    """The LLM's family label rides through to the mined Abbreviation."""
+    canned = AbbreviationProposalBatch(
+        proposals=[
+            AbbreviationProposal(
+                short="iplc",
+                expansion="input plc",
+                is_expandable=True,
+                confidence=0.7,
+                rationale="plc variant",
+                group="plc-variant",
+            )
+        ]
+    )
+    [abbrev] = LLMAbbreviationMiner(client=FakeClient(canned)).mine(["iplc"])
+    assert abbrev.group == "plc-variant"
+
+
 def test_mine_uses_opus_by_default() -> None:
     miner = LLMAbbreviationMiner(client=FakeClient(AbbreviationProposalBatch(proposals=[])))
     miner.mine(["splc"])

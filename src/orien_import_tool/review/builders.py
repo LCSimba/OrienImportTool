@@ -142,6 +142,7 @@ def build_abbreviation_review(abbreviations: Iterable[Abbreviation]) -> ReviewQu
                     "short": abbrev.short,
                     "expansion": abbrev.expansion,
                     "rationale": abbrev.rationale,
+                    "group": abbrev.group,
                 },
             )
         )

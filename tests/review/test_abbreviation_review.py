@@ -50,7 +50,12 @@ def test_build_abbreviation_review_keeps_llm_only() -> None:
     assert len(queue) == 1
     item = queue.items[0]
     assert item.item_type == ReviewItemType.ABBREVIATION
-    assert item.payload == {"short": "instr", "expansion": "instrument", "rationale": "mined"}
+    assert item.payload == {
+        "short": "instr",
+        "expansion": "instrument",
+        "rationale": "mined",
+        "group": "",
+    }
 
 
 # --- CSV round-trip -----------------------------------------------------------------
@@ -64,6 +69,21 @@ def test_abbreviation_round_trips_through_csv() -> None:
     assert item.item_type == ReviewItemType.ABBREVIATION
     assert item.payload["short"] == "instr"
     assert item.payload["expansion"] == "instrument"
+
+
+def test_group_lands_in_sortable_csv_column() -> None:
+    """The family label surfaces as a dedicated column so the SME can cluster."""
+    import csv as _csv
+    import io
+
+    abbrev = Abbreviation(
+        "iplc", "input plc", AbbrevProposer.LLM, 0.7, "plc variant", group="plc-variant"
+    )
+    csv_text = queue_to_csv(build_abbreviation_review([abbrev]))
+    rows = list(_csv.DictReader(io.StringIO(csv_text)))
+    assert rows[0]["group"] == "plc-variant"
+    # And it still round-trips via payload_json.
+    assert queue_from_csv(csv_text).items[0].payload["group"] == "plc-variant"
 
 
 # --- apply -> store -----------------------------------------------------------------

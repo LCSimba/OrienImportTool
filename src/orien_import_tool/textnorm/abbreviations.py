@@ -42,6 +42,7 @@ class Abbreviation:
     proposer: AbbrevProposer = AbbrevProposer.RULE
     confidence: float = 1.0
     rationale: str = ""
+    group: str = ""  # optional family label (LLM-assigned), for SME clustering
 
 
 # Domain-general mechanical / electrical maintenance shorthand. Lowercase keys.

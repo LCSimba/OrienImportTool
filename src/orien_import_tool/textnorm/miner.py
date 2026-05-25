@@ -79,6 +79,12 @@ class AbbreviationProposal(BaseModel):
     )
     confidence: float = Field(ge=0, le=1)
     rationale: str
+    group: str = Field(
+        default="",
+        description="Short family label clustering related tokens — use the SAME label for "
+        "related tokens (e.g. 'comms', 'safety-device', 'plc-variant', 'sensor', 'typo'). "
+        "One family per token.",
+    )
 
 
 class AbbreviationProposalBatch(BaseModel):
@@ -153,6 +159,7 @@ class LLMAbbreviationMiner:
                             proposer=AbbrevProposer.LLM,
                             confidence=proposal.confidence,
                             rationale=proposal.rationale,
+                            group=proposal.group.strip(),
                         )
                     )
         return out
@@ -210,6 +217,8 @@ class LLMAbbreviationMiner:
             "- One proposal per input token; preserve the token verbatim in `short`.",
             "- confidence 0.0-1.0; 0.9+ only for unambiguous expansions.",
             "- rationale: one short sentence.",
+            "- group: a short family label; give related tokens the SAME label so a reviewer "
+            "sees them clustered (e.g. PLC variants together, comms terms together, typos together).",
         ]
         return [
             {
