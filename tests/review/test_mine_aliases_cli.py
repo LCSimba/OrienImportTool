@@ -227,6 +227,29 @@ def test_score_threshold_filters_events(
     )
 
 
+def test_alias_examples_matches_source_rows() -> None:
+    """_alias_examples maps each alias_text to original rows that contain it."""
+    from orien_import_tool.aliases import Alias, AliasProposer
+    from orien_import_tool.domain.downtime import DowntimeEvent
+    from orien_import_tool.review.cli import _alias_examples
+
+    events = [
+        DowntimeEvent(external_id="1", asset_ref="c", text="BELT BROKEN", free_text="BELT BROKEN"),
+        DowntimeEvent(
+            external_id="2", asset_ref="c", text="MOTOR TRIPPED", free_text="MOTOR TRIPPED"
+        ),
+    ]
+    aliases = [
+        Alias(alias_text="broken", canonical_tokens=("fracture",), proposer=AliasProposer.LLM),
+        Alias(alias_text="tripped", canonical_tokens=("stoppage",), proposer=AliasProposer.LLM),
+        Alias(alias_text="nowhere", canonical_tokens=("x",), proposer=AliasProposer.LLM),
+    ]
+    ex = _alias_examples(aliases, events)
+    assert ex["broken"] == ["BELT BROKEN"]
+    assert ex["tripped"] == ["MOTOR TRIPPED"]
+    assert "nowhere" not in ex  # no source row -> no entry
+
+
 def test_knowledge_stores_loads_persisted_rows(tmp_path: Path) -> None:
     """--db-url makes mine-aliases load SME-confirmed aliases + abbreviations."""
     from types import SimpleNamespace

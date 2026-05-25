@@ -371,6 +371,9 @@ def _mine_aliases(args) -> int:
         threshold=args.score_threshold,
         cap=args.max_events,
     )
+    # Keep the original (un-normalised) rows so the review can show the SME the
+    # operator text each alias was drawn from.
+    source_events = list(low_conf)
     # Send the LLM cleaned operator free-text — normalisation fixed typos and
     # expanded abbreviations; the validated/coded columns are dropped here.
     if normalizer is not None and low_conf:
@@ -393,13 +396,38 @@ def _mine_aliases(args) -> int:
     proposed = miner.mine(low_conf)
     print(f"Got {len(proposed)} alias proposals back.", file=sys.stderr)
 
-    queue = build_alias_review(proposed)
+    queue = build_alias_review(proposed, examples=_alias_examples(proposed, source_events))
     if args.csv:
         args.csv.write_text(queue_to_csv(queue), encoding="utf-8")
         print(f"Wrote {len(queue)} alias review items to {args.csv}", file=sys.stderr)
     else:
         sys.stdout.write(queue_to_csv(queue))
     return 0
+
+
+def _alias_examples(aliases, events, *, per_alias: int = 2, maxlen: int = 120):
+    """Map each alias_text to a few original downtime snippets that contain it.
+
+    Gives the SME the operator text the alias was drawn from. Substring match on
+    the raw row text (free-text preferred) — good enough for context.
+    """
+    out: dict[str, list[str]] = {}
+    for alias in aliases:
+        needle = alias.alias_text.casefold()
+        if not needle or alias.alias_text in out:
+            continue
+        snippets: list[str] = []
+        for event in events:
+            text = event.free_text or event.text
+            if needle in text.casefold():
+                snippet = text[:maxlen]
+                if snippet not in snippets:
+                    snippets.append(snippet)
+                if len(snippets) >= per_alias:
+                    break
+        if snippets:
+            out[alias.alias_text] = snippets
+    return out
 
 
 def _knowledge_stores(args, equipment, iso_ref):
@@ -536,8 +564,9 @@ def _mine_abbreviations(args) -> int:
     ]
     # One CSV, two categories: expandable proposals + the tokens we deliberately
     # left as-is (so the SME can confirm or override the 'not an abbreviation' call).
-    queue = build_abbreviation_review(enriched)
-    queue.extend(build_unexpandable_review(result.not_expandable).items)
+    # Attach the example usages so the reviewer sees the original operator text.
+    queue = build_abbreviation_review(enriched, examples=examples)
+    queue.extend(build_unexpandable_review(result.not_expandable, examples=examples).items)
     if args.csv:
         args.csv.write_text(queue_to_csv(queue), encoding="utf-8")
         print(

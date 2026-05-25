@@ -55,6 +55,7 @@ def test_build_abbreviation_review_keeps_llm_only() -> None:
         "expansion": "instrument",
         "rationale": "mined",
         "group": "",
+        "examples": [],
     }
 
 
@@ -219,7 +220,29 @@ def test_build_unexpandable_review_surfaces_tokens() -> None:
     item = queue.items[0]
     assert item.item_type == ReviewItemType.UNKNOWN_TOKEN
     assert item.primary_proposal == ""
-    assert item.payload == {"short": "simocode", "rationale": "Siemens product", "group": "product"}
+    assert item.payload == {
+        "short": "simocode",
+        "rationale": "Siemens product",
+        "group": "product",
+        "examples": [],
+    }
+
+
+def test_review_items_carry_example_snippets() -> None:
+    """Example original-text snippets ride into payload and the CSV column."""
+    import csv as _csv
+    import io
+
+    abbrev = Abbreviation("instr", "instrument", AbbrevProposer.LLM, 0.9, "mined")
+    examples = {"instr": ["INSTR FAULT ON DRIVE", "CHECK INSTR CARD"]}
+    queue = build_abbreviation_review([abbrev], examples=examples)
+    assert queue.items[0].payload["examples"] == ["INSTR FAULT ON DRIVE", "CHECK INSTR CARD"]
+
+    csv_text = queue_to_csv(queue)
+    rows = list(_csv.DictReader(io.StringIO(csv_text)))
+    assert "INSTR FAULT ON DRIVE" in rows[0]["examples"]
+    # And it round-trips via payload_json.
+    assert queue_from_csv(csv_text).items[0].payload["examples"][0] == "INSTR FAULT ON DRIVE"
 
 
 def test_corrected_unknown_token_becomes_sme_abbreviation() -> None:

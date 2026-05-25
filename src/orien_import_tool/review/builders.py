@@ -76,12 +76,17 @@ def _mapping_item_id(m: Iso14224Mapping) -> str:
 # --- Alias reviews -------------------------------------------------------------------
 
 
-def build_alias_review(aliases: Iterable[Alias]) -> ReviewQueue:
+def build_alias_review(
+    aliases: Iterable[Alias],
+    *,
+    examples: Mapping[str, list[str]] | None = None,
+) -> ReviewQueue:
     """Convert LLM-proposed aliases into ReviewItems for SME accept/reject.
 
     Rule-seeded and SME-confirmed aliases are skipped — only LLM proposals
     need review. Re-running over already-accepted SME aliases would re-queue
-    settled work.
+    settled work. ``examples`` optionally maps ``alias_text`` to a few original
+    downtime snippets where the term appears, for reviewer context.
     """
     queue = ReviewQueue()
     for alias in aliases:
@@ -104,6 +109,7 @@ def build_alias_review(aliases: Iterable[Alias]) -> ReviewQueue:
                     "scope_equipment_token": alias.scope_equipment_token,
                     "iso_hint": alias.iso_hint,
                     "rationale": alias.rationale,
+                    "examples": list((examples or {}).get(alias.alias_text, [])),
                 },
             )
         )
@@ -119,11 +125,16 @@ def _alias_item_id(alias: Alias) -> str:
 # --- Abbreviation reviews ------------------------------------------------------------
 
 
-def build_abbreviation_review(abbreviations: Iterable[Abbreviation]) -> ReviewQueue:
+def build_abbreviation_review(
+    abbreviations: Iterable[Abbreviation],
+    *,
+    examples: Mapping[str, list[str]] | None = None,
+) -> ReviewQueue:
     """Convert LLM-proposed abbreviations into ReviewItems for SME accept/reject.
 
     Rule-seeded and SME-confirmed abbreviations are skipped — only LLM
-    proposals need review.
+    proposals need review. ``examples`` optionally maps ``short`` to a few
+    original downtime snippets where the token appears, for reviewer context.
     """
     queue = ReviewQueue()
     for abbrev in abbreviations:
@@ -144,19 +155,25 @@ def build_abbreviation_review(abbreviations: Iterable[Abbreviation]) -> ReviewQu
                     "expansion": abbrev.expansion,
                     "rationale": abbrev.rationale,
                     "group": abbrev.group,
+                    "examples": list((examples or {}).get(abbrev.short, [])),
                 },
             )
         )
     return queue
 
 
-def build_unexpandable_review(tokens: Iterable[UnexpandableToken]) -> ReviewQueue:
+def build_unexpandable_review(
+    tokens: Iterable[UnexpandableToken],
+    *,
+    examples: Mapping[str, list[str]] | None = None,
+) -> ReviewQueue:
     """Surface tokens the miner deliberately left unexpanded for SME review.
 
     These are the product names / equipment codes / proper nouns the model
     flagged as *not* abbreviations. Accepting confirms "correctly left as-is";
     correcting (supplying an expansion) rescues a wrongly-skipped abbreviation.
-    Grouped via the same family label as the expandable proposals.
+    Grouped via the same family label as the expandable proposals. ``examples``
+    optionally maps ``short`` to original downtime snippets, for context.
     """
     queue = ReviewQueue()
     for token in tokens:
@@ -174,6 +191,7 @@ def build_unexpandable_review(tokens: Iterable[UnexpandableToken]) -> ReviewQueu
                     "short": token.short,
                     "rationale": token.rationale,
                     "group": token.group,
+                    "examples": list((examples or {}).get(token.short, [])),
                 },
             )
         )
