@@ -64,6 +64,48 @@ class ExtractedEntities:
 
 
 @dataclass(frozen=True, slots=True)
+class ComponentLink:
+    """An extracted component span linked to an FMEA component (or unmatched)."""
+
+    span: str
+    component_token: str  # "" if no FMEA component matched above threshold
+    component_description: str
+    score: float
+
+    @property
+    def matched(self) -> bool:
+        return bool(self.component_token)
+
+
+@dataclass(frozen=True, slots=True)
+class FailureModeLink:
+    """An extracted failure term linked to an ISO 14224 B.15 mode (or unmatched)."""
+
+    term: str
+    iso_b15: str  # "" if no B.15 mode matched
+    score: float
+
+    @property
+    def matched(self) -> bool:
+        return bool(self.iso_b15)
+
+
+@dataclass(frozen=True, slots=True)
+class LinkedEntities:
+    """Stage-3 result: extracted spans resolved against the FMEA / ISO 14224.
+
+    ``asset_ids`` holds component spans that were recognised as equipment/
+    section identifiers (e1, vuma-1 conveyor) and deliberately *not* treated as
+    components.
+    """
+
+    event_external_id: str
+    components: tuple[ComponentLink, ...] = ()
+    failure_modes: tuple[FailureModeLink, ...] = ()
+    asset_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ComponentMatch:
     """A scored Component candidate for a downtime event."""
 
