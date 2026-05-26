@@ -44,6 +44,23 @@ class DowntimeEvent:
     duration_s: float | None = None
     source_system: str = ""
     coded_context: tuple[str, ...] = ()
+    text_line3: str = ""  # the richest operator narrative line (CMMS TextLine3)
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractedEntities:
+    """Open extraction from one event's cleaned operator text.
+
+    Produced *before* any FMEA matching: ``components`` and ``failure_modes``
+    are what the operator text actually mentions (failure modes tagged
+    deterministically against the generic ISO/alias vocabulary; components
+    pulled by an LLM). Linking these to the equipment FMEA is a later stage.
+    """
+
+    event_external_id: str
+    cleaned_text: str
+    components: tuple[str, ...] = ()
+    failure_modes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

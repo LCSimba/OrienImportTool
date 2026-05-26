@@ -144,6 +144,7 @@ def parse_xlsx(
                 text=text,
                 free_text=_compose_text(row, col_idx, free_text_cols),
                 coded_context=_distinct_values(row, col_idx, context_cols),
+                text_line3=_cell(row, col_idx, "TextLine3"),
                 start_ts=_extract_datetime(row, col_idx, date_col),
                 duration_s=_extract_duration_seconds(row, col_idx, duration_col),
                 source_system=source_system,
@@ -185,6 +186,14 @@ def _compose_text(
         seen.add(key)
         parts.append(text)
     return " | ".join(parts)
+
+
+def _cell(row: tuple, col_idx: dict[str, int], col: str) -> str:
+    """Single trimmed cell value, or '' if the column is absent/blank."""
+    if col not in col_idx:
+        return ""
+    value = row[col_idx[col]]
+    return str(value).strip() if value is not None else ""
 
 
 def _distinct_values(
