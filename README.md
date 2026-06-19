@@ -17,6 +17,7 @@ The system ingests an Orien Tactics FMEA export, builds a canonical Equipment / 
 - [`docs/data-model.md`](docs/data-model.md) — canonical domain entities, relationships, invariants
 - [`docs/ml-pipeline.md`](docs/ml-pipeline.md) — seed generation, classifier, LLM roles, active learning, metrics
 - [`docs/decisions.md`](docs/decisions.md) — open questions, recommended choices, risk register
+- [`docs/voice-bot.md`](docs/voice-bot.md) — interactive voice bot that captures downtime from a technician against the FMEA taxonomy
 
 ## Status
 
