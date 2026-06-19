@@ -60,6 +60,13 @@ and the speech provider is swappable:
   `llm/protocols.py`). `ConsoleVoice` is the batteries-included text backend;
   `ScriptedVoice` drives the tests. A production deployment supplies an adapter
   wrapping a telephony + STT + TTS provider (e.g. Twilio + Whisper/Azure).
+* **`local_voice.py` — the local PoC backend.** A real microphone channel built
+  from open-source parts: `faster-whisper` (STT) + Piper (TTS) + mic capture
+  with energy-based endpointing (`Endpointer`). It implements the same two
+  protocols, so the dialogue is unchanged. The testable logic (endpointing,
+  `LocalVoice` orchestration) is unit tested with fakes; the model/hardware
+  wrappers lazily import their libraries so they are only needed when the local
+  backend actually runs.
 * **`engine.py` — the run loop.** Speaks, listens, feeds the reply back until
   the dialogue is final. Guards against runaway calls (`max_turns`) and caller
   silence / hang-up (`max_silent` consecutive blank utterances).
@@ -90,6 +97,39 @@ python -m orien_import_tool.downtime_bot \
 `--db-url` (without `--persist`) also loads the FMEA taxonomy from a database
 that already holds imported equipment, instead of (or in addition to)
 `--orien`.
+
+## Local voice PoC (microphone)
+
+The recommended proof of concept runs on a real microphone, entirely locally —
+no telephony or cloud service — using `faster-whisper` for speech-to-text and
+Piper for text-to-speech.
+
+```bash
+pip install '.[voice]'
+
+# Download a Piper voice once (any en_* voice works), e.g. from
+# https://huggingface.co/rhasspy/piper-voices — you need the .onnx (and its
+# .onnx.json). Then:
+python -m orien_import_tool.downtime_bot \
+    --orien tests/fixtures/orien/<export>.xlsx \
+    --voice local \
+    --piper-voice /path/to/en_GB-voice.onnx \
+    --stt-model small \
+    --technician "J. Smith"
+```
+
+- `--stt-model` is a faster-whisper size (`tiny`/`base`/`small`/`medium`/…);
+  it auto-downloads on first run. `small` is a good speed/accuracy balance;
+  step up to `medium` for stronger accent handling.
+- `--language en` forces the STT language (skip it to auto-detect — useful for
+  a multilingual call centre).
+- Endpointing (`Endpointer`) decides when the technician has stopped talking
+  via short-term energy plus a trailing-silence window; tune `silence_ms` in
+  `build_local_voice` if it cuts people off or waits too long.
+
+This validates the actual conversation on real speech. When you later need a
+phone number, keep this dialogue + taxonomy and swap the transport for a
+streaming framework (Pipecat / LiveKit) with SIP (Jambonz / LiveKit SIP).
 
 ## Adding a real voice channel
 

@@ -61,6 +61,19 @@ def _build_taxonomy(orien: Path | None, db_url: str, iso_dir: Path) -> CaptureTa
     return CaptureTaxonomy(equipment=equipment, iso=iso)
 
 
+def _build_voice(args):
+    """Return the configured voice backend (console or local mic)."""
+    if args.voice == "local":
+        from orien_import_tool.downtime_bot.local_voice import build_local_voice
+
+        return build_local_voice(
+            piper_voice_path=args.piper_voice,
+            stt_model=args.stt_model,
+            language=args.language,
+        )
+    return ConsoleVoice()
+
+
 def _dump_json(captured: CapturedDowntime, path: Path) -> None:
     record = dataclasses.asdict(captured)
     record["started_at"] = captured.started_at.isoformat()
@@ -82,10 +95,26 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--technician", default="", help="Reporting artisan/technician name.")
     parser.add_argument("--persist", action="store_true", help="Write the capture to --db-url.")
     parser.add_argument("--json", type=Path, help="Write the captured record as JSON.")
+    parser.add_argument(
+        "--voice",
+        choices=["console", "local"],
+        default="console",
+        help="Voice backend: 'console' (typed, default) or 'local' (mic + "
+        "faster-whisper + Piper; needs the 'voice' extra).",
+    )
+    parser.add_argument("--piper-voice", help="Path to a Piper .onnx voice (local backend).")
+    parser.add_argument("--stt-model", default="small", help="faster-whisper model size.")
+    parser.add_argument(
+        "--language",
+        default=None,
+        help="Force an STT language code (e.g. 'en'); default auto-detect.",
+    )
     args = parser.parse_args(argv)
 
     if args.persist and not args.db_url:
         parser.error("--persist requires --db-url")
+    if args.voice == "local" and not args.piper_voice:
+        parser.error("--voice local requires --piper-voice (a Piper .onnx model path)")
 
     taxonomy = _build_taxonomy(args.orien, args.db_url, args.iso_dir)
     if not taxonomy.machine_types():
@@ -95,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    voice = ConsoleVoice()
+    voice = _build_voice(args)
     session = VoiceBotSession(taxonomy, voice, voice, technician=args.technician)
     captured = session.run()
 

@@ -23,6 +23,12 @@ ml = [
 textnorm = [
     "pyspellchecker>=0.8",
 ]
+voice = [
+    "faster-whisper>=1.0",
+    "piper-tts>=1.2",
+    "sounddevice>=0.4",
+    "numpy>=1.24",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",

@@ -19,6 +19,11 @@ Layers (each independently testable):
 
 from orien_import_tool.downtime_bot.dialogue import BotPrompt, DialogueManager
 from orien_import_tool.downtime_bot.engine import VoiceBotSession
+from orien_import_tool.downtime_bot.local_voice import (
+    Endpointer,
+    LocalVoice,
+    build_local_voice,
+)
 from orien_import_tool.downtime_bot.slots import CapturedDowntime, Slot
 from orien_import_tool.downtime_bot.taxonomy import CaptureTaxonomy
 from orien_import_tool.downtime_bot.voice import (
@@ -34,9 +39,12 @@ __all__ = [
     "CapturedDowntime",
     "ConsoleVoice",
     "DialogueManager",
+    "Endpointer",
+    "LocalVoice",
     "ScriptedVoice",
     "Slot",
     "SpeechInput",
     "SpeechOutput",
     "VoiceBotSession",
+    "build_local_voice",
 ]
